@@ -53,8 +53,9 @@ erDiagram
 - `member`: read-only sessions, own profile/check-ins
 - `plus_member`: `member` + create/cancel own bookings
 - `trainer`: manage own availability; view rosters
-- `manager`: publish sessions; manage equipment; view any roster
+- `manager`: publish sessions; view any roster
 - `front_desk`: check-ins only; read-only member status
+- `floor_manager`: manage equipment
 - `admin`: all privileges
 
 ### 4.4 User Interface (server-rendered MVP)

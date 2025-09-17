@@ -6,7 +6,7 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 **To Start:**
 - one gym location
 - one trainer; one member of each type (regular, plus)
-- roles: `member`, `plus_member`, `trainer`, `manager`, `admin`
+- roles: `member`, `plus_member`, `trainer`, `manager`, `front_desk`, `floor_manager`, `admin`
 
 **To Address:**
 - registrations,
@@ -87,7 +87,7 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 - audit trail for all state‑changing operations
 
 ### 6.1 Role-Based Access Control (RBAC) & Security
-- app-level decorators AND MySQL roles: `member` → `plus_member` (inherits), `trainer`, `manager`, `front_desk` (subset of manager focused on check-ins), `admin`.
+- app-level decorators AND MySQL roles: `member` → `plus_member` (inherits), `trainer`, `manager`, `front_desk` (subset of manager focused on check-ins), `floor_manager` (subset of manager focused on equipment), `admin`.
 - use least privilege grants; sensitive tables via views/procedures where helpful.
 - passwords: encrypted somehow; PII protected; member photos stored as encrypted BLOB
 - audit: DB triggers on INSERT/UPDATE/DELETE to an append-only `AuditLog` table; updates to audit rows are blocked.

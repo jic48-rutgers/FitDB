@@ -65,7 +65,7 @@ FitDB is a reliable, central system that supports the day-to-day functions of la
 
 ### Other Assumptions
 - Schema supports multi-gym in future phases.
-- AWS optional for prod; dev uses Docker Compose
+- AWS optional for production
 
 ## 8. Success Metrics
 - demoable booking with audit proof
