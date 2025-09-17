@@ -31,15 +31,15 @@ FitDB is a reliable, central system that supports the day-to-day functions of la
 
 ## 5. Functional Requirements (selected)
 - **FR-1 Register Member**: create member with tier, status, optional photo
-  - **AC:** all required fields validated; member row created; audit entry written.
+  - **AC:** all required fields validated; member row created; audit entry written
 - **FR-2 Publish Sessions** (manager from trainer availability)
-  - **AC:** sessions created within date window; no conflicts; equipment sufficiency verified; audit entry written; rollback on any failure.
+  - **AC:** sessions created within date window; no conflicts; equipment sufficiency verified; audit entry written; rollback on any failure
 - **FR-3 Book Session** (plus member)
-  - **AC:** capacity and equipment checks enforced; unique booking per member/session; audit entry written; rollback on failure.
+  - **AC:** capacity and equipment checks enforced; unique booking per member/session; audit entry written; rollback on failure
 - **FR-4 Check-In** (front desk)
-  - **AC:** active status required; check-in saved with timestamp and method; audit entry written.
+  - **AC:** active status required; check-in saved with timestamp and method; audit entry written
 - **FR-5 Reporting**
-  - **AC:** views return utilization and equipment demand; queries complete < 3s on 50k rows (dev target).
+  - **AC:** views return utilization and equipment demand; queries complete < 3s on 50k rows (dev target)
 
 ## 6. Non-Functional Requirements
 - **Performance:**
@@ -55,7 +55,7 @@ FitDB is a reliable, central system that supports the day-to-day functions of la
   - index strategy documented
   - paginate heavy lists
 - **Usability:**
-  - Users will retrieve and add data through a GUI including calendars, text-based entry, and clickable items.
+  - Users will retrieve and add data through a GUI including calendars, text-based entry, and clickable items
 
 ## 7. Assumptions & Dependencies
 
@@ -65,7 +65,7 @@ FitDB is a reliable, central system that supports the day-to-day functions of la
 
 ### Other Assumptions
 - Schema supports multi-gym in future phases.
-- AWS optional for prod; dev uses Docker Compose.
+- AWS optional for prod; dev uses Docker Compose
 
 ## 8. Success Metrics
 - demoable booking with audit proof
