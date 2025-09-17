@@ -34,6 +34,7 @@ This project explores or relies on the following areas (see `docs` folder for co
 - Role-based access control (member, plus_member, trainer, manager, admin) at app and DB layers
 - Class sessions, booking capacity guards, and conflict checks
 - Trainer availability (planned) and manager-driven session publication
+- Issuing strikes and bans to members (as manager or trainer)
 - Equipment inventory and per-session allocation modeling
 - Audit logging (append-only) and security controls
 - Denormalized reporting views (class utilization, equipment demand)
