@@ -1,11 +1,11 @@
-## FitDB Architecture
+# Architectural Diagram
 
-## 1) Overview
+## 1. Overview
 FitDB is a small, well-structured Flask + MySQL system emphasizing database design and auditable transactions.
 
 **To Start:**
 - one gym location
-- one trainer; 3 member of each type (regular, plus)
+- one trainer; one member of each type (regular, plus)
 - roles: `member`, `plus_member`, `trainer`, `manager`, `admin`
 
 **To Address:**
@@ -17,17 +17,17 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 - reporting
 
 **To Avoid:**
-- focuson on things this project doesn't address such as payrolls
+- focus on on things this project doesn't address such as payrolls
 
 **Extensibility Goal:**
 - the schema and services should be designed to scale to many gyms, trainers, members, and overlapping class sessions
 
 ---
 
-## 2) Context Diagram
+## 2. Context Diagram
 **Actors → System:**
 - Member / Plus Member → portal (member view) → see personal information, book classes/view bookings (plus only)
-- Trainer → portal (trainer view) → view class rosters, (provide availabilty to mananger possibly added later)
+- Trainer → portal (trainer view) → view class rosters, (provide availability to mananger possibly added later)
 - Manager → portal (manager console view) →  manage equipment inventory/allocations, override class rosters, ban members
 - Admin → portal (admin console view) → global configuration, auditing
 
@@ -38,7 +38,7 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 
 ---
 
-## 3) Component Diagram
+## 3. Component Diagram
 - **Auth** Flask: session auth(?) with role/permission checks
 - **Membership**: members, membership plans, check‑ins, member photos
 - **Scheduling**: trainers, class sessions, bookings
@@ -50,7 +50,7 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 
 ---
 
-## 4) Deployment Diagram
+## 4. Deployment Diagram
 - **Dev:** Flask + MySQL
 - **Prod (optional):** AWS
 
@@ -58,7 +58,7 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 
 ---
 
-## 5) Data Flow Diagram
+## 5. Data Flow Diagram
 **A) Plus member books a class**
 1. auth check based on role
 2. validate capacity and equipment constraints in a transaction
@@ -80,8 +80,22 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 
 ---
 
-## 6) Security Considerations
+## 6. Security Considerations
 - using MySQL roles (member → plus member inherits; trainer; manager; admin)
 - try to counter SQL injection risks from dynamic SQL strings
 - PII: hashed passwords and encrypt membership photo (?)
 - audit trail for all state‑changing operations
+
+### 6.1 Role-Based Access Control (RBAC) & Security
+- app-level decorators AND MySQL roles: `member` → `plus_member` (inherits), `trainer`, `manager`, `front_desk` (subset of manager focused on check-ins), `admin`.
+- use least privilege grants; sensitive tables via views/procedures where helpful.
+- passwords: encrypted somehow; PII protected; member photos stored as encrypted BLOB
+- audit: DB triggers on INSERT/UPDATE/DELETE to an append-only `AuditLog` table; updates to audit rows are blocked.
+- SQL injection protection via parameterized queries (?)
+
+### 6.2 Transactions
+- **booking:** atomic insert with capacity guard and equipment check; on failure → rollback with clear error.
+- **publish sessions:** atomic generation of sessions from availability with equipment validation; rollback on conflict.
+
+### 6.3 Build & Performance
+- use **EXPLAIN/ANALYZE** to show query plans.
