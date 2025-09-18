@@ -23,8 +23,31 @@ This TDD specifies the technical implementation details for the Gym Membership M
 ### 4.1 Data Model
 **ER Diagram (WIP)**
 ```mermaid
+---
+config:
+  theme: redux-color
+  look: neo
+  layout: elk
+---
 erDiagram
-    Gym
+    GYM ||--o{ STAFF           : employs
+    GYM ||--o{ CLASS_SESSION   : hosts
+    GYM ||--o{ CHECK_IN        : records
+    GYM ||--o{ EQUIPMENT_ITEM  : owns
+    GYM ||--o{ INVENTORY_COUNT : stocks
+    USER ||--o| MEMBER : may_be
+    USER ||--o| STAFF  : may_be
+    STAFF ||--|| TRAINER : is_trainer
+    STAFF ||--|| MANAGER : is_manager
+    STAFF ||--|| ADMIN   : is_admin
+    MEMBERSHIP_PLAN ||--o{ MEMBER : subscribes
+    CLASS_SESSION ||--o{ BOOKING : has
+    MEMBER        ||--o{ BOOKING : makes
+    CLASS_SESSION ||--o{ SESSION_TRAINER : has
+    TRAINER       ||--o{ SESSION_TRAINER : teaches
+    EQUIP_KIND       ||--o{ EQUIPMENT_ITEM  : instances
+    EQUIP_KIND       ||--o{ INVENTORY_COUNT : bulk
+
 ```
 **Key Tables (summary) (WIP)**
 
