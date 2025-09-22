@@ -1,9 +1,9 @@
 # Technical Design Document
 
 ## 1. Document Control
-- **Version:** 1.0
+- **Version:** 1.1
 - **Authors:** Henry Huerta, Jared Cordova
-- **Date:** 9/17/25
+- **Date:** 9/22/25
 - **Reviewers:**  Prof. Arnold Lau, T.A. Sneh Bhandari
 
 ## 2. Introduction
@@ -12,9 +12,10 @@ This TDD specifies the technical implementation details for the Gym Membership M
 (See [`README.md`](./docs/README.md) for MVP and roadmap.)
 
 ## 3. High‑Level Architecture
-- Auth/RBAC, Membership, Scheduling, Equipment, Reporting, Audit.
-- MySQL as the system of record
-- Static assets and member photos stored locally in dev
+- Services: Auth/RBAC, Membership, Scheduling, Equipment, Reporting, Audit.
+- Backend: Flask
+- Database: MySQL as the system of record
+- Dev: static assets and member photos stored locally in dev
 
 (create visual diagram)
 
@@ -22,39 +23,82 @@ This TDD specifies the technical implementation details for the Gym Membership M
 
 ### 4.1 Data Model
 **ER Diagram (WIP)**
+_Overview with audit tables. For separated diagrams (overview **without** audits, plus three clearer ERDs), see **[ERDs.md](./ERDs.md)**._
+
 ```mermaid
 ---
 config:
   theme: redux-color
   look: neo
   layout: elk
+  elk:
+    mergeEdges: True
+    nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
+    %% overview WITH audit tables
+
+    %% user specializations
+    USER ||--o| MEMBER : may_be_member
+    USER ||--o{ USER_AUD : audited_by
+    USER ||--o| STAFF  : may_be_staff
+
+    STAFF ||--o{ STAFF_AUD : audited_by
+    STAFF ||--|| TRAINER     : is_trainer
+    STAFF ||--|| MANAGER     : is_manager
+    STAFF ||--|| FRONT_DESK  : is_front_desk
+
+    TRAINER ||--o{ TRAINER_AUD : audited_by
+    MANAGER ||--o{ MANAGER_AUD : audited_by
+    FRONT_DESK ||--o{ FRONT_DESK_AUD : audited_by
+
+    %% gym "ownership"
+    GYM ||--o{ GYM_AUD         : audited_by
     GYM ||--o{ STAFF           : employs
     GYM ||--o{ CLASS_SESSION   : hosts
     GYM ||--o{ CHECK_IN        : records
     GYM ||--o{ EQUIPMENT_ITEM  : owns
     GYM ||--o{ INVENTORY_COUNT : stocks
-    USER ||--o| MEMBER : may_be
-    USER ||--o| STAFF  : may_be
-    STAFF ||--|| TRAINER : is_trainer
-    STAFF ||--|| MANAGER : is_manager
-    STAFF ||--|| ADMIN   : is_admin
-    MEMBERSHIP_PLAN ||--o{ MEMBER : subscribes
-    CLASS_SESSION ||--o{ BOOKING : has
-    MEMBER        ||--o{ BOOKING : makes
-    CLASS_SESSION ||--o{ SESSION_TRAINER : has
-    TRAINER       ||--o{ SESSION_TRAINER : teaches
-    EQUIP_KIND       ||--o{ EQUIPMENT_ITEM  : instances
-    EQUIP_KIND       ||--o{ INVENTORY_COUNT : bulk
+    GYM ||--o{ MEMBER          : home_gym_for_trial_basic
 
+    %% equipment & maintenance
+    EQUIP_KIND   ||--o{ EQUIP_KIND_AUD : audited_by
+    EQUIP_KIND   ||--o{ EQUIPMENT_ITEM : instances
+    EQUIP_KIND   ||--o{ INVENTORY_COUNT: bulk_counts
+    EQUIPMENT_ITEM ||--o{ EQUIPMENT_ITEM_AUD : audited_by
+    EQUIPMENT_ITEM ||--o{ SERVICE_LOG   : service_clean_history
+    INVENTORY_COUNT ||--o{ INVENTORY_COUNT_AUD : audited_by
+    SERVICE_LOG ||--o{ SERVICE_LOG_AUD  : audited_by
+
+    %% availability & class staffing
+    TRAINER ||--o{ TRAINER_AVAIL_DATE : provides_availability
+    TRAINER_AVAIL_DATE ||--o{ TRAINER_AVAIL_DATE_AUD : audited_by
+    CLASS_SESSION ||--o{ CLASS_SESSION_AUD : audited_by
+    CLASS_SESSION ||--o{ SESSION_TRAINER : has_trainers
+    SESSION_TRAINER ||--o{ SESSION_TRAINER_AUD : audited_by
+    TRAINER ||--o{ SESSION_TRAINER : teaches_session
+
+    %% memberships, bookings, and attendance
+    MEMBERSHIP_PLAN ||--o{ MEMBERSHIP_PLAN_AUD : audited_by
+    MEMBERSHIP_PLAN ||--o{ MEMBER : subscribes
+    CLASS_SESSION   ||--o{ BOOKING : has_bookings
+    BOOKING ||--o{ BOOKING_AUD : audited_by
+    MEMBER          ||--o{ BOOKING : makes_booking
+    CHECK_IN ||--o{ CHECK_IN_AUD : audited_by
+    MEMBER          ||--o{ CHECK_IN: checks_in
 ```
 **Key Tables (summary) (WIP)**
 
 **Constraints & Indexes (WIP)**
-- unique usernames and emails for members
-- unique bookings
-- indexes:? (?)
+- Global uniqueness: `USER.username`, `USER.email`
+- One-to-one uniqueness: `MEMBER.user_id`, `STAFF.user_id`, `TRAINER.staff_id`, `MANAGER.staff_id`, `FRONT_DESK.staff_id`
+- Booking dedupe: `UNIQUE(BOOKING.session_id, BOOKING.member_id)`
+- Session staffing: `UNIQUE(SESSION_TRAINER.session_id, SESSION_TRAINER.trainer_id)`; enforce `CLASS_SESSION.max_trainers` in app/trigger (?)
+- Trainer availability: `UNIQUE(TRAINER_AVAIL_DATE.trainer_id, for_date, period)`
+- Inventory per gym: `UNIQUE(INVENTORY_COUNT.gym_id, equip_kind_id)`
+- Time-window indexes: `CLASS_SESSION(starts_at)`, `CHECK_IN(member_id, checked_in_at)`
+- Equipment dashboards: index `(EQUIPMENT_ITEM.gym_id, equip_kind_id)` and flags `service_required`, `cleaning_required`
+- Audit tables: append-only; index `occurred_at`, `(actor_user_id, occurred_at)`
 
 ### 4.2 API Design
 (?)
