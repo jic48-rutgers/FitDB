@@ -42,12 +42,15 @@ erDiagram
     USER ||--o| MEMBER : may_be_member
     USER ||--o{ USER_AUD : audited_by
     USER ||--o| STAFF  : may_be_staff
+    USER ||--|| SUPER_ADMIN : is_super_admin_global
+    SUPER_ADMIN ||--o{ SUPER_ADMIN_AUD : audited_by
 
     STAFF ||--o{ STAFF_AUD : audited_by
     STAFF ||--|| TRAINER     : is_trainer
     STAFF ||--|| MANAGER     : is_manager
     STAFF ||--|| FRONT_DESK  : is_front_desk
-
+    STAFF ||--|| ADMIN       : is_admin_gym_scoped
+    ADMIN ||--o{ ADMIN_AUD   : audited_by
     TRAINER ||--o{ TRAINER_AUD : audited_by
     MANAGER ||--o{ MANAGER_AUD : audited_by
     FRONT_DESK ||--o{ FRONT_DESK_AUD : audited_by

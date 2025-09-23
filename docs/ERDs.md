@@ -1,10 +1,11 @@
 # Entity Relationship Diagrams
 
-This file contains four Mermaid ERDs:
+This file contains five ERDs:
 1. **Overview (no audit tables)**
 2. **Gym & Equipment (+ audits)**
 3. **Staff, Classes & Trainer Availability (+ audits)**
 4. **Members, Plans, Bookings & Check-ins (+ audits)**
+5. **Admins (+ audits)**
 
 ---
 
@@ -24,11 +25,13 @@ erDiagram
     %% overview - entities & relationships only (no audit tables)
 
     %% user specializations
-    USER ||--o| MEMBER : may_be_member
-    USER ||--o| STAFF  : may_be_staff
+    USER  ||--o| MEMBER      : may_be_member
+    USER  ||--o| STAFF       : may_be_staff
+    USER  ||--|| SUPER_ADMIN : is_super_admin_global
     STAFF ||--|| TRAINER     : is_trainer
     STAFF ||--|| MANAGER     : is_manager
     STAFF ||--|| FRONT_DESK  : is_front_desk
+    STAFF ||--|| ADMIN       : is_admin_gym_scoped
 
     %% gym "ownership"
     GYM ||--o{ STAFF           : employs
@@ -403,9 +406,56 @@ erDiagram
     }
 
     %% audit tables
-    USER_AUD { bigint id PK  bigint user_id FK  datetime occurred_at string action json before_json json after_json bigint actor_user_id }
-    MEMBER_AUD { bigint id PK  bigint member_id FK  datetime occurred_at string action json before_json json after_json bigint actor_user_id }
-    MEMBERSHIP_PLAN_AUD { bigint id PK  bigint membership_plan_id FK  datetime occurred_at string action json before_json json after_json bigint actor_user_id }
-    BOOKING_AUD { bigint id PK  bigint booking_id FK  datetime occurred_at string action json before_json json after_json bigint actor_user_id }
-    CHECK_IN_AUD { bigint id PK  bigint check_in_id FK  datetime occurred_at string action json before_json json after_json bigint actor_user_id }
+    USER_AUD { bigint id PK  bigint user_id FK  datetime occurred_at  string action  json before_json  json after_json  bigint actor_user_id }
+    MEMBER_AUD { bigint id PK  bigint member_id FK  datetime occurred_at  string action  json before_json  json after_json  bigint actor_user_id }
+    MEMBERSHIP_PLAN_AUD { bigint id PK  bigint membership_plan_id FK  datetime occurred_at  string action  json before_json  json after_json  bigint actor_user_id }
+    BOOKING_AUD { bigint id PK  bigint booking_id FK  datetime occurred_at  string action  json before_json  json after_json  bigint actor_user_id }
+    CHECK_IN_AUD { bigint id PK  bigint check_in_id FK  datetime occurred_at  string action  json before_json  json after_json  bigint actor_user_id }
+```
+
+---
+
+## 5) Admins (+ audits)
+
+```mermaid
+---
+config:
+  theme: redux-color
+  look: neo
+  layout: elk
+  elk:
+    mergeEdges: True
+    nodePlacementStrategy: LINEAR_SEGMENTS
+---
+erDiagram
+    %% admin & governance (+ audits)
+    %% Shows gym-scoped ADMIN and global SUPER_ADMIN with audits and scopes.
+
+    %% relationships
+    USER  ||--o| STAFF        : may_be_staff
+    USER  ||--|| SUPER_ADMIN  : is_super_admin_global
+    STAFF ||--|| ADMIN        : is_admin_gym_scoped
+    GYM   ||--o{ STAFF        : employs
+    GYM   ||--o{ ADMIN        : has_admins
+
+    %% audits
+    USER ||--o{ USER_AUD            : audited_by
+    STAFF ||--o{ STAFF_AUD          : audited_by
+    ADMIN ||--o{ ADMIN_AUD          : audited_by
+    SUPER_ADMIN ||--o{ SUPER_ADMIN_AUD : audited_by
+    GYM ||--o{ GYM_AUD              : audited_by
+
+    %% entities (minimal fields for context)
+    USER { bigint id PK  string username UK  string email UK }
+    STAFF { bigint id PK  bigint user_id FK "-> USER.id"  bigint gym_id FK "-> GYM.id" }
+    ADMIN { bigint id PK  bigint staff_id FK "-> STAFF.id"  string scope "gym" }
+    SUPER_ADMIN { bigint id PK  bigint user_id FK "-> USER.id"  string scope "global" }
+    GYM { bigint id PK  string name }
+
+    %% audit tables
+    USER_AUD { bigint id PK  bigint user_id FK  datetime occurred_at  string action  json before_json  json after_json  bigint actor_user_id }
+    STAFF_AUD { bigint id PK  bigint staff_id FK  datetime occurred_at  string action  json before_json  json after_json  bigint actor_user_id }
+    ADMIN_AUD { bigint id PK  bigint admin_id FK  datetime occurred_at  string action  json before_json  json after_json  bigint actor_user_id }
+    SUPER_ADMIN_AUD { bigint id PK  bigint super_admin_id FK  datetime occurred_at  string action  json before_json  json after_json  bigint actor_user_id }
+    GYM_AUD { bigint id PK  bigint gym_id FK  datetime occurred_at  string action  json before_json  json after_json  bigint actor_user_id }
 ```
