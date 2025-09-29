@@ -9,7 +9,7 @@ This file contains five ERDs:
 
 ---
 
-## 1) Overview — no audit tables
+## 1) Overview - no audit tables
 
 ```mermaid
 ---

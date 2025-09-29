@@ -1,17 +1,17 @@
 # Technical Design Document
 
 ## 1. Document Control
-- **Version:** 1.1
+- **Version:** 1.2
 - **Authors:** Henry Huerta, Jared Cordova
-- **Date:** 9/22/25
-- **Reviewers:**  Prof. Arnold Lau, T.A. Sneh Bhandari
+- **Date:** 2025-09-26
+- **Reviewers:** Prof. Arnold Lau, T.A. Sneh Bhandari
 
 ## 2. Introduction
 This TDD specifies the technical implementation details for the Gym Membership Management System (“FitDB”). The design emphasizes the database layer: RBAC (SQL roles), auditable transactions, and denormalized reporting views.
 
 (See [`README.md`](./docs/README.md) for MVP and roadmap.)
 
-## 3. High‑Level Architecture
+## 3. High-Level Architecture
 - Services: Auth/RBAC, Membership, Scheduling, Equipment, Reporting, Audit.
 - Backend: Flask
 - Database: MySQL as the system of record
@@ -94,13 +94,13 @@ erDiagram
 
 **Constraints & Indexes (WIP)**
 - Global uniqueness: `USER.username`, `USER.email`
-- One-to-one uniqueness: `MEMBER.user_id`, `STAFF.user_id`, `TRAINER.staff_id`, `MANAGER.staff_id`, `FRONT_DESK.staff_id`
+- One-to-one uniqueness: `MEMBER.user_id`, `STAFF.user_id`, `TRAINER.staff_id`, `MANAGER.staff_id`, `FRONT_DESK.staff_id`, `ADMIN.staff_id`, `SUPER_ADMIN.user_id`
 - Booking dedupe: `UNIQUE(BOOKING.session_id, BOOKING.member_id)`
 - Session staffing: `UNIQUE(SESSION_TRAINER.session_id, SESSION_TRAINER.trainer_id)`; enforce `CLASS_SESSION.max_trainers` in app/trigger (?)
 - Trainer availability: `UNIQUE(TRAINER_AVAIL_DATE.trainer_id, for_date, period)`
 - Inventory per gym: `UNIQUE(INVENTORY_COUNT.gym_id, equip_kind_id)`
 - Time-window indexes: `CLASS_SESSION(starts_at)`, `CHECK_IN(member_id, checked_in_at)`
-- Equipment dashboards: index `(EQUIPMENT_ITEM.gym_id, equip_kind_id)` and flags `service_required`, `cleaning_required`
+- Equipment dashboards: index `(EQUIPMENT_ITEM.gym_id, equip_kind_id)`, plus flags `service_required`, `cleaning_required`
 - Audit tables: append-only; index `occurred_at`, `(actor_user_id, occurred_at)`
 
 ### 4.2 API Design
@@ -142,7 +142,7 @@ erDiagram
 
 ## 6. Security & Compliance
 - Password hashing (?)
-- **MySQL roles** with least-privilege grants; `plus_member` inherits from `member`
+- **MySQL roles** with least-privilege grants; `plus_member` inherits from `member`, etc.
 - **Audit logging** via DB triggers
 - Parameterized queries only (?)
 
