@@ -1,9 +1,9 @@
 # Technical Design Document
 
 ## 1. Document Control
-- **Version:** 1.2
+- **Version:** 1.3
 - **Authors:** Henry Huerta, Jared Cordova
-- **Date:** 2025-09-26
+- **Date:** 2025-09-29
 - **Reviewers:** Prof. Arnold Lau, T.A. Sneh Bhandari
 
 ## 2. Introduction
@@ -12,9 +12,9 @@ This TDD specifies the technical implementation details for the Gym Membership M
 (See [`README.md`](./docs/README.md) for MVP and roadmap.)
 
 ## 3. High-Level Architecture
-- Services: Auth/RBAC, Membership, Scheduling, Equipment, Reporting, Audit.
-- Backend: Flask
-- Database: MySQL as the system of record
+- Services: Auth/RBAC, Membership, Scheduling, Equipment, Reporting, Audit
+- Backend: Flask (Python)
+- Database: MySQL (system of record)
 - Dev: static assets and member photos stored locally in dev
 
 (create visual diagram)
@@ -36,75 +36,121 @@ config:
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
-    %% overview WITH audit tables
+    %% Overview WITH audit tables - titles & relationships only
 
-    %% user specializations
-    USER ||--o| MEMBER : may_be_member
-    USER ||--o{ USER_AUD : audited_by
-    USER ||--o| STAFF  : may_be_staff
-    USER ||--|| SUPER_ADMIN : is_super_admin_global
-    SUPER_ADMIN ||--o{ SUPER_ADMIN_AUD : audited_by
+    %% People & roles
+    USER  ||--o| MEMBER        : may_be_member
+    USER  ||--o| STAFF         : may_be_staff
+    USER  ||--|| SUPER_ADMIN   : is_super_admin_global
 
-    STAFF ||--o{ STAFF_AUD : audited_by
-    STAFF ||--|| TRAINER     : is_trainer
-    STAFF ||--|| MANAGER     : is_manager
-    STAFF ||--|| FRONT_DESK  : is_front_desk
-    STAFF ||--|| ADMIN       : is_admin_gym_scoped
-    ADMIN ||--o{ ADMIN_AUD   : audited_by
-    TRAINER ||--o{ TRAINER_AUD : audited_by
-    MANAGER ||--o{ MANAGER_AUD : audited_by
-    FRONT_DESK ||--o{ FRONT_DESK_AUD : audited_by
+    STAFF ||--|| TRAINER       : is_trainer
+    STAFF ||--|| MANAGER       : is_manager
+    STAFF ||--|| FLOOR_MANAGER : is_floor_manager
+    STAFF ||--|| FRONT_DESK    : is_front_desk
+    STAFF ||--|| ADMIN         : is_admin_gym_scoped
 
-    %% gym "ownership"
-    GYM ||--o{ GYM_AUD         : audited_by
-    GYM ||--o{ STAFF           : employs
-    GYM ||--o{ CLASS_SESSION   : hosts
-    GYM ||--o{ CHECK_IN        : records
-    GYM ||--o{ EQUIPMENT_ITEM  : owns
-    GYM ||--o{ INVENTORY_COUNT : stocks
-    GYM ||--o{ MEMBER          : home_gym_for_trial_basic
+    %% Gyms & hosting
+    GYM ||--o{ STAFF            : employs
+    GYM ||--o{ ADMIN            : has_admins
+    GYM ||--o{ CLASS_SESSION    : hosts
+    GYM ||--o{ CHECK_IN         : records
+    GYM ||--o{ EQUIPMENT_ITEM   : owns
+    GYM ||--o{ INVENTORY_COUNT  : stocks
+    GYM ||--o{ MEMBER           : has
 
-    %% equipment & maintenance
-    EQUIP_KIND   ||--o{ EQUIP_KIND_AUD : audited_by
-    EQUIP_KIND   ||--o{ EQUIPMENT_ITEM : instances
-    EQUIP_KIND   ||--o{ INVENTORY_COUNT: bulk_counts
-    EQUIPMENT_ITEM ||--o{ EQUIPMENT_ITEM_AUD : audited_by
-    EQUIPMENT_ITEM ||--o{ SERVICE_LOG   : service_clean_history
-    INVENTORY_COUNT ||--o{ INVENTORY_COUNT_AUD : audited_by
-    SERVICE_LOG ||--o{ SERVICE_LOG_AUD  : audited_by
+    %% Equipment & Maintenance
+    EQUIP_KIND      ||--o{ EQUIPMENT_ITEM            : instances
+    EQUIP_KIND      ||--o{ INVENTORY_COUNT           : bulk_counts
+    EQUIPMENT_ITEM  ||--o{ SERVICE_LOG               : service_clean_history
 
-    %% availability & class staffing
-    TRAINER ||--o{ TRAINER_AVAIL_DATE : provides_availability
-    TRAINER_AVAIL_DATE ||--o{ TRAINER_AVAIL_DATE_AUD : audited_by
-    CLASS_SESSION ||--o{ CLASS_SESSION_AUD : audited_by
-    CLASS_SESSION ||--o{ SESSION_TRAINER : has_trainers
-    SESSION_TRAINER ||--o{ SESSION_TRAINER_AUD : audited_by
-    TRAINER ||--o{ SESSION_TRAINER : teaches_session
+    %% Floor manager duty
+    FLOOR_MANAGER }o--o{ EQUIPMENT_ITEM              : monitors
 
-    %% memberships, bookings, and attendance
-    MEMBERSHIP_PLAN ||--o{ MEMBERSHIP_PLAN_AUD : audited_by
-    MEMBERSHIP_PLAN ||--o{ MEMBER : subscribes
-    CLASS_SESSION   ||--o{ BOOKING : has_bookings
-    BOOKING ||--o{ BOOKING_AUD : audited_by
-    MEMBER          ||--o{ BOOKING : makes_booking
-    CHECK_IN ||--o{ CHECK_IN_AUD : audited_by
-    MEMBER          ||--o{ CHECK_IN: checks_in
+    %% Trainer availability & class staffing
+    TRAINER         ||--o{ TRAINER_AVAIL_DATE        : provides_availability
+    CLASS_SESSION   ||--o{ SESSION_TRAINER           : has_trainers
+    TRAINER         ||--o{ SESSION_TRAINER           : teaches_session
+
+    %% Memberships, bookings, and attendance
+    MEMBERSHIP_PLAN ||--o{ MEMBER                     : subscribes
+    CLASS_SESSION   ||--o{ BOOKING                    : has_bookings
+    MEMBER          ||--o{ BOOKING                    : makes_booking
+    MEMBER          ||--o{ CHECK_IN                   : checks_in
+
+    %% Weak entities
+    CLASS_SESSION   ||--o{ SESSION_EQUIP_RESERVATION : reserves_equipment_for
+    EQUIP_KIND      ||--o{ SESSION_EQUIP_RESERVATION : specifies_kind_for
+    MEMBER          ||--o{ ACCESS_CARD               : owns_card
+    GYM             ||--o{ ACCESS_CARD               : issues_card
+    ACCESS_CARD     ||--o{ CHECK_IN                  : used_for_check_in
+
+    %% Audits
+    USER                ||--o{ USER_AUD                    : audited_by
+    SUPER_ADMIN         ||--o{ SUPER_ADMIN_AUD             : audited_by
+    STAFF               ||--o{ STAFF_AUD                   : audited_by
+    ADMIN               ||--o{ ADMIN_AUD                   : audited_by
+    FLOOR_MANAGER       ||--o{ FLOOR_MANAGER_AUD           : audited_by
+    TRAINER             ||--o{ TRAINER_AUD                 : audited_by
+    MANAGER             ||--o{ MANAGER_AUD                 : audited_by
+    FRONT_DESK          ||--o{ FRONT_DESK_AUD              : audited_by
+
+    GYM                 ||--o{ GYM_AUD                     : audited_by
+    EQUIP_KIND          ||--o{ EQUIP_KIND_AUD              : audited_by
+    EQUIPMENT_ITEM      ||--o{ EQUIPMENT_ITEM_AUD          : audited_by
+    INVENTORY_COUNT     ||--o{ INVENTORY_COUNT_AUD         : audited_by
+    SERVICE_LOG         ||--o{ SERVICE_LOG_AUD             : audited_by
+
+    TRAINER_AVAIL_DATE  ||--o{ TRAINER_AVAIL_DATE_AUD      : audited_by
+    CLASS_SESSION       ||--o{ CLASS_SESSION_AUD           : audited_by
+    SESSION_TRAINER     ||--o{ SESSION_TRAINER_AUD         : audited_by
+    SESSION_EQUIP_RESERVATION ||--o{ SESSION_EQUIP_RES_AUD : audited_by
+
+    MEMBERSHIP_PLAN     ||--o{ MEMBERSHIP_PLAN_AUD         : audited_by
+    MEMBER              ||--o{ MEMBER_AUD                  : audited_by
+    BOOKING             ||--o{ BOOKING_AUD                 : audited_by
+    CHECK_IN            ||--o{ CHECK_IN_AUD                : audited_by
+    ACCESS_CARD         ||--o{ ACCESS_CARD_AUD             : audited_by
 ```
-**Key Tables (summary) (WIP)**
 
-**Constraints & Indexes (WIP)**
-- Global uniqueness: `USER.username`, `USER.email`
-- One-to-one uniqueness: `MEMBER.user_id`, `STAFF.user_id`, `TRAINER.staff_id`, `MANAGER.staff_id`, `FRONT_DESK.staff_id`, `ADMIN.staff_id`, `SUPER_ADMIN.user_id`
-- Booking dedupe: `UNIQUE(BOOKING.session_id, BOOKING.member_id)`
-- Session staffing: `UNIQUE(SESSION_TRAINER.session_id, SESSION_TRAINER.trainer_id)`; enforce `CLASS_SESSION.max_trainers` in app/trigger (?)
-- Trainer availability: `UNIQUE(TRAINER_AVAIL_DATE.trainer_id, for_date, period)`
-- Inventory per gym: `UNIQUE(INVENTORY_COUNT.gym_id, equip_kind_id)`
-- Time-window indexes: `CLASS_SESSION(starts_at)`, `CHECK_IN(member_id, checked_in_at)`
-- Equipment dashboards: index `(EQUIPMENT_ITEM.gym_id, equip_kind_id)`, plus flags `service_required`, `cleaning_required`
-- Audit tables: append-only; index `occurred_at`, `(actor_user_id, occurred_at)`
+#### 4.1.1 Cardinality
+- **1:1**
+  - `USER` ↔ `MEMBER` (optional specialization per user)
+  - `USER` ↔ `STAFF` (optional specialization per user)
+  - `STAFF` ↔ `ADMIN` / `TRAINER` / `MANAGER` / `FLOOR_MANAGER` / `FRONT_DESK` (each role entity entry corresponds to exactly one `STAFF` row)
+- **1:N**
+  - `GYM` → `STAFF`, `ADMIN`, `CLASS_SESSION`, `CHECK_IN`, `EQUIPMENT_ITEM`, `INVENTORY_COUNT`, `MEMBER`
+  - `EQUIP_KIND` → `EQUIPMENT_ITEM`, `INVENTORY_COUNT`
+  - `TRAINER` → `TRAINER_AVAIL_DATE`
+  - `CLASS_SESSION` → `BOOKING`
+  - `MEMBER` → `BOOKING`, `CHECK_IN`, `ACCESS_CARD`
+  - `GYM` → `ACCESS_CARD`
+- **M:N**
+  - `CLASS_SESSION` ↔ `TRAINER` (through `SESSION_TRAINER`)
+  - `FLOOR_MANAGER` ↔ `EQUIPMENT_ITEM` (through monitoring association)
+  - `CLASS_SESSION` ↔ `EQUIP_KIND` (through **weak** `SESSION_EQUIP_RESERVATION`)
+  - `MEMBER` ↔ `GYM` (through `CHECK_IN`)
 
-### 4.2 API Design
-(?)
+#### 4.1.2 Participation Constraints
+- **Total participation (mandatory)**
+  - every `TRAINER`, `MANAGER`, `FLOOR_MANAGER`, `FRONT_DESK`, `ADMIN` **must** be a `STAFF`.
+  - every `CLASS_SESSION` **belongs to** a `GYM`.
+  - every `BOOKING` **references** one `CLASS_SESSION` and one `MEMBER`.
+  - `SESSION_TRAINER`, `SESSION_EQUIP_RESERVATION`, `INVENTORY_COUNT`, `CHECK_IN`, and `ACCESS_CARD` **cannot exist** without their parents
+- **Partial participation (optional)**
+  - a `USER` **may** be a `MEMBER` and/or `STAFF` (not required to be either).
+  - a `GYM` **may** have zero `CLASS_SESSION`s or `EQUIPMENT_ITEM`s at initialization.
+  - a `MEMBER` **may** have zero `BOOKING`s or `CHECK_IN`s.
+
+> **Note:**
+> indexes, attribute typing (key/derived/multi-valued/composite), and the detailed audit schema will be documented in **ERDs.md**.
+
+### 4.2 API Design (?)
+- Auth: `POST /api/auth/login`, `GET /api/me`
+- Sessions & Booking: `GET /api/sessions`, `POST /api/bookings`, `DELETE /api/bookings/{id}`
+- Trainer: `GET/POST /api/trainer/availability` (AM/PM per date)
+- Manager: `POST /api/manager/sessions` (create/cancel/assign trainer)
+- Equipment: `GET /api/equipment/items`, `POST /api/equipment/service-logs`
+- Reports: `GET /api/reports/class-utilization`, `GET /api/reports/equipment-demand`
 
 ### 4.3 Application Logic
 **Booking Workflow (transactional)**
@@ -129,11 +175,12 @@ erDiagram
 - `admin`: all privileges
 
 ### 4.4 User Interface (server-rendered MVP)
-- **Member (regular):** profile + check-ins; sessions list (read-only)
-- **Plus Member:** sessions list → details → confirm booking/cancel
-- **Trainer:** “My Availability” editor; “My Sessions” roster.
-- **Manager:** “Publish Sessions” wizard; “Equipment” dashboard; conflicts queue
-- **Admin:** audit viewer + role assignments
+- **Member (trial/basic/plus):** profile, check-ins, sessions (plus can book/cancel).
+- **Trainer:** manage availability; view rosters.
+- **Manager/Front Desk:** publish/cancel, assign trainers; check-ins; registration.
+- **Floor Manager:** equipment dashboard (status/alerts), log service/cleaning.
+- **Admin (gym):** full control within assigned gym.
+- **Super Admin (global):** cross-gym admin.
 
 ## 5. Technology Stack
 - **Backend:** Python + Flask
@@ -143,7 +190,7 @@ erDiagram
 ## 6. Security & Compliance
 - Password hashing (?)
 - **MySQL roles** with least-privilege grants; `plus_member` inherits from `member`, etc.
-- **Audit logging** via DB triggers
+- **Audit logging** via DB triggers (append-only)
 - Parameterized queries only (?)
 
 ## 7. Performance Considerations
@@ -152,7 +199,7 @@ erDiagram
 - Paginate audit and reports
 
 ## 8. Risks & Mitigations
-- **Overbooking or equipment conflicts** → DB trigger + transaction checks
+- **Overbooking or equipment conflicts** → DB constraints + transaction checks
 - **RBAC misconfiguration** → explicit role grants
 - **ERD conflicts** → ERD reviews
 - **Scope considerations** → enforce MVP
