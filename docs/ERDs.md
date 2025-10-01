@@ -173,7 +173,25 @@ erDiagram
 - **Multi-valued:** none
 - **Derived:** `next_clean_due_at` (from last_cleaned/intervals), `reorder_needed` (from quantities & threshold)
 
-**Relevant triggers (?)**
+**Relevant triggers**
+- `equipment_item_clean_due_update` - recalculate `next_clean_due_at` / `cleaning_required` when cleaned
+- `service_log_item_flags` - on `SERVICE_LOG` insert: update `EQUIPMENT_ITEM.last_serviced_at`; set/reset `service_required` and `cleaning_required` based on `action`
+- `inventory_reorder_flag` - on `INVENTORY_COUNT` change: recalculate `reorder_needed`
+- `equip_item_status_guard` - for status to be `ok` whre must be no service/clean flags
+
+**Relevant checks**
+- **Column-level**:
+  - `EQUIP_KIND.mode IN ('per_item','bulk')`
+  - `EQUIPMENT_ITEM.status IN ('ok','needs_service','out_of_order')`
+  - `EQUIPMENT_ITEM.uses_count >= 0`, `rated_uses > 0`, `cleaning_interval_uses >= 0`, `cleaning_interval_days >= 0`
+  - `SERVICE_LOG.action IN ('inspect','repair','replace','clean')`
+  - `INVENTORY_COUNT.qty_on_floor >= 0`, `qty_in_storage >= 0`
+- **Table-level**:
+  - Unique `(gym_id, equip_kind_id)` in `INVENTORY_COUNT`
+  - Partial unique on `(gym_id, serial_no)` where `serial_no IS NOT NULL` (or full unique if always present)
+  - FKs `ON DELETE RESTRICT` for audits; `SERVICE_LOG.equipment_item_id` `ON DELETE RESTRICT`
+
+**Indices (?)**
 
 ---
 
@@ -235,7 +253,7 @@ erDiagram
         bigint id "PK, R"
         bigint user_id "U, R, FK -> USER.id"
         bigint gym_id "R, FK -> GYM.id"
-        string status "R"
+        string status "R, active|inactive"
         string notes ""
         datetime created_at "R"
         datetime updated_at "R"
@@ -309,7 +327,21 @@ erDiagram
 - **Multi-valued:** none
 - **Derived:** none
 
-**Relevant triggers (?)**
+**Relevant triggers**
+- `staff_gym_scope_guard` - ensure role’s `STAFF` belongs to the target `GYM`
+- `user_status_login_guard` - prevent setting `USER.status='inactive'` if stil an active staff, etc.
+
+**Relevant checks**
+- **Column-level**:
+  - `USER.status IN ('active','inactive','locked')`
+  - `STAFF.status IN ('active','inactive')`
+  - `ADMIN.scope = 'gym'`, `SUPER_ADMIN.scope = 'global'`
+  - `FRONT_DESK.capabilities` subset check (enforced via permitted values or separate lookup table)
+- **Table-level**:
+  - Unique `(user_id)` in `STAFF`, unique `(staff_id)` in each specialization table
+  - FK `STAFF.user_id -> USER.id` `ON DELETE RESTRICT`; specialization tables `ON DELETE CASCADE` from `STAFF`
+
+**Indices (?)**
 
 ---
 
@@ -390,7 +422,25 @@ erDiagram
 - **Multi-valued:** none
 - **Derived:** none
 
-**Relevant triggers (?)**
+**Relevant triggers**
+- `session_capacity_guard` - prevent inserts to `SESSION_TRAINER` beyond `CLASS_SESSION.max_trainers`
+- `session_booking_open_guard` - prevent reservations/bookings when `open_for_booking = false` or `status` is invalid
+- `availability_match_guard` - ensure trainer availability exists for session date/period & gym before `SESSION_TRAINER` insert
+- `session_time_coherence` - ensure `ends_at > starts_at` and enforce allowed session windows (e.g., exclude 11:00–13:00 per policy)
+- `session_equip_res_guard` - ensure `quantity >= 0` for the equipment to reserve and is ≤ available inventory in gym
+
+**Relevant checks**
+- **Column-level**:
+  - `CLASS_SESSION.capacity > 0`, `max_trainers >= 1`
+  - `CLASS_SESSION.status IN ('scheduled','canceled','completed')`
+  - `TRAINER_AVAIL_DATE.period IN ('AM','PM')`, `status IN ('available','unavailable')`
+  - `SESSION_EQUIP_RESERVATION.quantity >= 0`
+- **Table-level**:
+  - unique `(session_id, trainer_id)` in `SESSION_TRAINER`
+  - unique `(session_id, equip_kind_id)` in `SESSION_EQUIP_RESERVATION`
+  - `SESSION_TRAINER.session_id -> CLASS_SESSION.id` `ON DELETE CASCADE` (remove staffing if session is deleted)
+
+**Indices (?)**
 
 ---
 
@@ -526,6 +576,27 @@ erDiagram
 - **Derived:** none
 
 **Relevant triggers (?)**
+- `booking_plus_only` - forbid `BOOKING` when member’s plan tier ≠ `plus`
+- `booking_capacity_guard` - ensure confirmed bookings ≤ `CLASS_SESSION.capacity`
+- `booking_unique_member_session` - prevent multiple active bookings for the same `(member_id, session_id)`
+- `booking_window_guard` - restrict bookings to current and next month per policy
+- `checkin_scope_guard` - allow `trial|basic` only at `home_gym_id`; `plus` at any gym
+- `access_card_status_guard` - forbid check-ins with `ACCESS_CARD.status IN ('lost','revoked')`
+- trigger to handle photo blob encryption/adding? (WIP)
+
+**Relevant checks**
+- **Column-level**:
+  - `MEMBERSHIP_PLAN.tier IN ('trial','basic','plus')`, `billing_cycle IN ('monthly','annual')`, `price >= 0`
+  - `MEMBER.status IN ('active','suspended','canceled')`
+  - `BOOKING.status IN ('confirmed','canceled_member','canceled_system')`
+  - `ACCESS_CARD.status IN ('active','lost','revoked')`
+- **Table-level**:
+  - unique `(username)` and `(email)` in `USER`
+  - unique `(user_id)` in `MEMBER` (1:1 user↔member)
+  - unique `(member_id, session_id)` in `BOOKING` (active rows)
+  - unique `(card_uid)` in `ACCESS_CARD`
+
+**Indices (?)**
 
 ---
 
@@ -573,6 +644,18 @@ erDiagram
 - **Derived:** none
 
 **Relevant triggers (?)**
+- `admin_scope_guard` - enforce privilege scope is bound to one gym
+- `user_admin_status_guard` - prevent orphaning of active users that have other roles
+- maybe add one so some admin actions need approval from more admins
+
+**Relevant checks**
+- **Column-level**:
+  - `USER.status IN ('active','inactive','locked')`
+  - `ADMIN.scope = 'gym'`, `SUPER_ADMIN.scope = 'global'`
+- **Table-level**:
+  - Unique `(user_id)` in `STAFF`; unique `(staff_id)` in `ADMIN`
+
+**Indices (?)**
 
 ---
 
@@ -614,5 +697,5 @@ erDiagram
     }
 ```
 
-**How states are captured**
-- Triggers on base tables (`BEFORE UPDATE/DELETE`, `AFTER INSERT/UPDATE`) populate `before_json`/`after_json` and record `actor_user_id`, `occurred_at` in the same transaction.
+**How states are captured (?)**
+- Triggers on base tables (`BEFORE UPDATE/DELETE`, `AFTER INSERT/UPDATE`) populate `before_json`/`after_json` and record `actor_user_id`, `occurred_at` in the same transaction
