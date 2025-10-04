@@ -34,27 +34,21 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 **External systems (possibly added later):**
 - AWS integrations
 
-(create visual diagram)
-
 ---
 
 ## 3. Component Diagram
-- **Auth** Flask: session auth(?) with role/permission checks
+- **Auth** Flask: session auth with role/permission checks
 - **Membership**: members, membership plans, check‑ins, member photos
 - **Scheduling**: trainers, class sessions, bookings
-- **Equipment**: inventory, maintenance status, session equipment allocations (?)
-- **Reporting**: denormalized views (utilization, class fill, equipment demand) (?)
-- **Audit**: append‑only audit log via DB triggers (?)
-
-(create visual diagram)
+- **Equipment**: inventory, maintenance status, session equipment allocations
+- **Reporting**: denormalized views (utilization, class fill, equipment demand)
+- **Audit**: append‑only audit log via DB triggers
 
 ---
 
 ## 4. Deployment Diagram
 - **Dev:** Flask + MySQL
 - **Prod (optional):** AWS
-
-(create visual diagram)
 
 ---
 
@@ -83,7 +77,7 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 ## 6. Security Considerations
 - using MySQL roles (member → plus member inherits; trainer; manager; admin)
 - try to counter SQL injection risks from dynamic SQL strings
-- PII: hashed passwords and encrypt membership photo (?)
+- PII: hashed passwords and encrypt membership photo
 - audit trail for all state‑changing operations
 
 ### 6.1 Role-Based Access Control (RBAC) & Security
@@ -91,7 +85,7 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 - use least privilege grants; sensitive tables via views/procedures where helpful.
 - passwords: encrypted somehow; PII protected; member photos stored as encrypted BLOB
 - audit: DB triggers on INSERT/UPDATE/DELETE to an append-only `AuditLog` table; updates to audit rows are blocked.
-- SQL injection protection via parameterized queries (?)
+- SQL injection protection via parameterized queries
 
 ### 6.2 Transactions
 - **booking:** atomic insert with capacity guard and equipment check; on failure → rollback with clear error.

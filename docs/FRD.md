@@ -60,7 +60,7 @@ FitDB is a reliable, central system that supports the day-to-day functions of la
 ## 7. Assumptions & Dependencies
 
 ### Data & Scripts
-- provide `build.sql` to create schema & indexes; provide seed data for week‑6 demo (?)
+- provide `build.sql` to create schema & indexes; provide seed data for demo
 - provide fixtures for forced-failure cases (overbooking, past-date booking).
 
 ### Other Assumptions
@@ -69,4 +69,4 @@ FitDB is a reliable, central system that supports the day-to-day functions of la
 
 ## 8. Success Metrics
 - demoable booking with audit proof
-- check rubric (?)
+- check rubric

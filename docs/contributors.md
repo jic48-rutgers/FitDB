@@ -11,7 +11,7 @@ Welcome to FitDB (CS-437). This document outlines who’s involved, what the pro
 | Henry    | @hah97      | Project Co-Lead · Back-end & Database Design (MySQL)       | tbd            |
 | Jared | @jic48-rutgers      | Project Co-Lead Front-end (Flask)   | tbd            |
 | Prof. Lou       | @tbd               | Course Instructor                         | tbd                      |
-| You?            | [Your GitHub ID]| Contributor                                            | [Your Contact Info]    |
+| You            | [Your GitHub ID]| Contributor                                            | [Your Contact Info]    |
 
 ---
 
@@ -19,7 +19,7 @@ Welcome to FitDB (CS-437). This document outlines who’s involved, what the pro
 
 - **Project Lead** – Own project direction, architecture choices, and major deliverables
 - **Developers (Back-end)** – Implement Flask endpoints, enforce MySQL roles; add audit logging; maintain denormalized reporting views.
-- **Developers (Front-end)** – Build Flask(/Jinja?) pages (member/plus booking, trainer availability, manager publishing & equipment dashboard); add validation and basic error handling.
+- **Developers (Front-end)** – Build Flask pages (member/plus booking, trainer availability, manager publishing & equipment dashboard); add validation and basic error handling.
 - **Data/DB Specialists** – Create/Maintain indexes, triggers, and views (utilization, equipment demand)
 - **Testers/QA** – Create test data to test for booking capacity, session publishing, verify audit immutability, overall performance, etc.
 - **Documentation** – Keep `README.md`, `architecture.md`, `FRD.md`, and `TDD.md` accurate

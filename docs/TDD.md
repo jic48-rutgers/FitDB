@@ -144,7 +144,7 @@ erDiagram
 > **Note:**
 > indexes, attribute typing (key/derived/multi-valued/composite), and the detailed audit schema will be documented in **ERDs.md**.
 
-### 4.2 API Design (?)
+### 4.2 API Design
 - Auth: `POST /api/auth/login`, `GET /api/me`
 - Sessions & Booking: `GET /api/sessions`, `POST /api/bookings`, `DELETE /api/bookings/{id}`
 - Trainer: `GET/POST /api/trainer/availability` (AM/PM per date)
@@ -188,13 +188,13 @@ erDiagram
 - **Frontend:** HTML/CSS (for now)
 
 ## 6. Security & Compliance
-- Password hashing (?)
+- Password hashing & Profile Picture Encryption
 - **MySQL roles** with least-privilege grants; `plus_member` inherits from `member`, etc.
 - **Audit logging** via DB triggers (append-only)
-- Parameterized queries only (?)
+- Parameterized queries only
 
 ## 7. Performance Considerations
-- Provide `build.sql` and seed data (?)
+- Provide `build.sql` and seed data
 - Capture EXPLAIN/ANALYZE for: session listing, booking insert path, utilization/equipment views
 - Paginate audit and reports
 
@@ -210,6 +210,6 @@ erDiagram
 - **SQL tests:** views return expected utilization/equipment demand
 
 ## 10. Deployment & Monitoring
-- **Runtime logging:** audit stored in DB (as JSON?)
+- **Runtime logging:** audit stored in DB (as JSON)
 - **Metrics:** latency, error rates, booking success/failure counts
-- **Backups:** do DB snapshots/backups (?)
+- **Backups:** do DB snapshots/backups
