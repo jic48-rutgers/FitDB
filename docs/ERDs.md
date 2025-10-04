@@ -3,18 +3,19 @@
 This document expands the high-level ERD from the TDD into digestible domain diagrams with attributes and notes.
 
 **Diagrams included**
-1. **Overview (no audit tables)**
+1. **Overview (no audit tables, no *_STATUS_IND)**
 2. **Gym & Equipment (+ audits)**
 3. **Staff (+ audits)**
 4. **Classes & Trainer Availability (+ audits)**
 5. **Members, Plans, Bookings & Check-ins (+ audits)**
 6. **Admins (+ audits)**
-7. **Audit Table Structure**
+7. **Status Indicator Table Structure**
+8. **Audit Table Structure**
 
 ---
 
-## 1) Overview (no audit tables)
-_Strictly the same entities and relationships as the TDD overview, but **without** audit tables and **without attributes** for readability._
+## 1) Overview (no audit or status indicator tables)
+_Same as TDD overview, but **without** audit tables and **without** status indicator tables and **without attributes** for readability._
 
 ```mermaid
 ---
@@ -103,6 +104,10 @@ erDiagram
     EQUIP_KIND ||--o{ INVENTORY_COUNT : bulk_counts
     EQUIPMENT_ITEM ||--o{ SERVICE_LOG : service_and_clean_logs
 
+    %% Status indicators
+    GYM_STATUS_IND       ||--o{ GYM            : classifies
+    EQUIPMENT_STATUS_IND ||--o{ EQUIPMENT_ITEM : classifies
+
     %% Audits
     GYM ||--o{ GYM_AUD : audited_by
     EQUIP_KIND ||--o{ EQUIP_KIND_AUD : audited_by
@@ -115,7 +120,7 @@ erDiagram
         bigint id "PK, R"
         string name "R"
         string address "R"
-        string status "R, active|inactive"
+        bigint status_id "R, FK -> GYM_STATUS_IND.id"
         datetime created_at "R"
         datetime updated_at "R"
     }
@@ -130,6 +135,7 @@ erDiagram
         bigint id "PK, R"
         bigint gym_id "R, FK -> GYM.id"
         bigint equip_kind_id "R, FK -> EQUIP_KIND.id"
+        bigint status_id "R, FK -> EQUIPMENT_STATUS_IND.id"
         string serial_no "U, optional"
         int uses_count "R"
         int rated_uses "R, service threshold"
@@ -140,7 +146,6 @@ erDiagram
         datetime next_clean_due_at ""
         boolean service_required "R"
         boolean cleaning_required "R"
-        string status "R, ok|needs_service|out_of_order"
         datetime created_at "R"
         datetime updated_at "R"
     }
@@ -182,16 +187,19 @@ erDiagram
 **Relevant checks**
 - **Column-level**:
   - `EQUIP_KIND.mode IN ('per_item','bulk')`
-  - `EQUIPMENT_ITEM.status IN ('ok','needs_service','out_of_order')`
   - `EQUIPMENT_ITEM.uses_count >= 0`, `rated_uses > 0`, `cleaning_interval_uses >= 0`, `cleaning_interval_days >= 0`
-  - `SERVICE_LOG.action IN ('inspect','repair','replace','clean')`
   - `INVENTORY_COUNT.qty_on_floor >= 0`, `qty_in_storage >= 0`
 - **Table-level**:
   - Unique `(gym_id, equip_kind_id)` in `INVENTORY_COUNT`
   - Partial unique on `(gym_id, serial_no)` where `serial_no IS NOT NULL` (or full unique if always present)
   - FKs `ON DELETE RESTRICT` for audits; `SERVICE_LOG.equipment_item_id` `ON DELETE RESTRICT`
 
-**Indices (?)**
+**Indices**
+- `GYM(name)`, `GYM(status_id)`, `GYM(created_at)`
+- `EQUIP_KIND(name) UNIQUE`, `EQUIP_KIND(mode)`
+- `EQUIPMENT_ITEM(gym_id, equip_kind_id)`, `EQUIPMENT_ITEM(status_id)`, `EQUIPMENT_ITEM(next_clean_due_at)`
+- `INVENTORY_COUNT(gym_id, equip_kind_id) UNIQUE`, `INVENTORY_COUNT(updated_snapshot_at)`
+- `SERVICE_LOG(equipment_item_id, serviced_at DESC)`, `SERVICE_LOG(staff_id)`
 
 ---
 
@@ -226,6 +234,10 @@ erDiagram
     %% Floor manager duty
     FLOOR_MANAGER }o--o{ EQUIPMENT_ITEM : monitors
 
+    %% Status indicators (entity names only)
+    ACCOUNT_STATUS_IND ||--o{ USER  : classifies
+    ACCOUNT_STATUS_IND ||--o{ STAFF : classifies
+
     %% Audits
     USER ||--o{ USER_AUD : audited_by
     STAFF ||--o{ STAFF_AUD : audited_by
@@ -241,11 +253,12 @@ erDiagram
         bigint id "PK, R"
         string username "U, R"
         string email "U, R"
-        string password_hash "R"
+        string password_hash "R, encrypted (never plaintext)"
         string password_algo "R"
         datetime password_updated_at ""
         datetime last_login_at ""
-        string status "R"
+        string profile_photo_path "optional"
+        bigint status_id "R, FK -> ACCOUNT_STATUS_IND.id"
         datetime created_at "R"
         datetime updated_at "R"
     }
@@ -253,7 +266,7 @@ erDiagram
         bigint id "PK, R"
         bigint user_id "U, R, FK -> USER.id"
         bigint gym_id "R, FK -> GYM.id"
-        string status "R, active|inactive"
+        bigint status_id "R, FK -> ACCOUNT_STATUS_IND.id"
         string notes ""
         datetime created_at "R"
         datetime updated_at "R"
@@ -305,6 +318,7 @@ erDiagram
         bigint id "PK, R"
         bigint gym_id "R, FK -> GYM.id"
         bigint equip_kind_id "R, FK -> EQUIP_KIND.id"
+        bigint status_id "R, FK -> EQUIPMENT_STATUS_IND.id"
         string serial_no "U, optional"
         int uses_count "R"
         int rated_uses "R"
@@ -315,7 +329,6 @@ erDiagram
         datetime next_clean_due_at ""
         boolean service_required "R"
         boolean cleaning_required "R"
-        string status "R"
         datetime created_at "R"
         datetime updated_at "R"
     }
@@ -330,6 +343,7 @@ erDiagram
 **Relevant triggers**
 - `staff_gym_scope_guard` - ensure role’s `STAFF` belongs to the target `GYM`
 - `user_status_login_guard` - prevent setting `USER.status='inactive'` if stil an active staff, etc.
+- `user_password_hash_enforce` - validate hash format
 
 **Relevant checks**
 - **Column-level**:
@@ -341,7 +355,11 @@ erDiagram
   - Unique `(user_id)` in `STAFF`, unique `(staff_id)` in each specialization table
   - FK `STAFF.user_id -> USER.id` `ON DELETE RESTRICT`; specialization tables `ON DELETE CASCADE` from `STAFF`
 
-**Indices (?)**
+**Indices**
+- `USER(username) UNIQUE`, `USER(email) UNIQUE`, `USER(status_id)`, `USER(last_login_at)`
+- `STAFF(user_id) UNIQUE`, `STAFF(gym_id, status_id)`, `STAFF(created_at)`
+- Each role table: `(<role>.staff_id) UNIQUE`
+- `EQUIPMENT_ITEM(status_id)`, `EQUIPMENT_ITEM(gym_id, equip_kind_id)`
 
 ---
 
@@ -367,6 +385,10 @@ erDiagram
     CLASS_SESSION ||--o{ SESSION_EQUIP_RESERVATION : reserves_equipment_for
     EQUIP_KIND ||--o{ SESSION_EQUIP_RESERVATION    : specifies_kind_for
 
+    %% Status indicators (entity names only)
+    SESSION_STATUS_IND     ||--o{ CLASS_SESSION      : classifies
+    AVAILABILITY_STATUS_IND||--o{ TRAINER_AVAIL_DATE : classifies
+
     %% Audits
     CLASS_SESSION ||--o{ CLASS_SESSION_AUD : audited_by
     SESSION_TRAINER ||--o{ SESSION_TRAINER_AUD : audited_by
@@ -384,8 +406,7 @@ erDiagram
         int capacity "R"
         int max_trainers "R"
         boolean open_for_booking "R"
-        string status "R, scheduled|canceled|completed"
-        string cancellation_reason ""
+        bigint status_id "R, FK -> SESSION_STATUS_IND.id"
         datetime created_at "R"
         datetime updated_at "R"
     }
@@ -395,7 +416,7 @@ erDiagram
         bigint gym_id "R, FK -> GYM.id"
         date for_date "R"
         string period "R, AM|PM"
-        string status "R, available|unavailable"
+        bigint status_id "R, FK -> AVAILABILITY_STATUS_IND.id"
         datetime created_at "R"
         datetime updated_at "R"
     }
@@ -410,7 +431,7 @@ erDiagram
     SESSION_EQUIP_RESERVATION {
         bigint session_id "PK, R, FK -> CLASS_SESSION.id"
         bigint equip_kind_id "PK, R, FK -> EQUIP_KIND.id"
-        int quantity "R, units reserved"
+        int quantity "R"
         datetime created_at "R"
         datetime updated_at "R"
     }
@@ -424,10 +445,11 @@ erDiagram
 
 **Relevant triggers**
 - `session_capacity_guard` - prevent inserts to `SESSION_TRAINER` beyond `CLASS_SESSION.max_trainers`
-- `session_booking_open_guard` - prevent reservations/bookings when `open_for_booking = false` or `status` is invalid
+- `session_booking_open_guard` - prevent reservations/bookings when `open_for_booking = false`
 - `availability_match_guard` - ensure trainer availability exists for session date/period & gym before `SESSION_TRAINER` insert
 - `session_time_coherence` - ensure `ends_at > starts_at` and enforce allowed session windows (e.g., exclude 11:00–13:00 per policy)
 - `session_equip_res_guard` - ensure `quantity >= 0` for the equipment to reserve and is ≤ available inventory in gym
+- `session_cancel_cascade` - ensure that sessions that are canceled notify members and free up staff
 
 **Relevant checks**
 - **Column-level**:
@@ -440,8 +462,11 @@ erDiagram
   - unique `(session_id, equip_kind_id)` in `SESSION_EQUIP_RESERVATION`
   - `SESSION_TRAINER.session_id -> CLASS_SESSION.id` `ON DELETE CASCADE` (remove staffing if session is deleted)
 
-**Indices (?)**
-
+**Indices**
+- `CLASS_SESSION(gym_id, starts_at)`, `CLASS_SESSION(status_id, open_for_booking)`, `CLASS_SESSION(starts_at)`
+- `TRAINER_AVAIL_DATE(trainer_id, for_date, period) UNIQUE`, `TRAINER_AVAIL_DATE(gym_id, for_date, period)`, `TRAINER_AVAIL_DATE(status_id)`
+- `SESSION_TRAINER(session_id, trainer_id) UNIQUE`, `SESSION_TRAINER(trainer_id, session_id)`
+- `SESSION_EQUIP_RESERVATION(session_id, equip_kind_id) UNIQUE`
 ---
 
 ## 5) Members, Plans, Bookings & Check-ins (+ audits)
@@ -471,6 +496,15 @@ erDiagram
     GYM ||--o{ ACCESS_CARD : issues_card
     ACCESS_CARD ||--o{ CHECK_IN : used_for_check_in
 
+    %% Status indicators (entity names only)
+    ACCOUNT_STATUS_IND     ||--o{ USER            : classifies
+    ACCOUNT_STATUS_IND     ||--o{ MEMBER          : classifies
+    PLAN_STATUS_IND        ||--o{ MEMBERSHIP_PLAN : classifies
+    ACCESS_CARD_STATUS_IND ||--o{ ACCESS_CARD     : classifies
+    BOOKING_STATUS_IND     ||--o{ BOOKING         : classifies
+    GYM_STATUS_IND         ||--o{ GYM             : classifies
+    SESSION_STATUS_IND     ||--o{ CLASS_SESSION   : classifies
+
     %% Audits
     USER ||--o{ USER_AUD : audited_by
     MEMBER ||--o{ MEMBER_AUD : audited_by
@@ -484,11 +518,12 @@ erDiagram
         bigint id "PK, R"
         string username "U, R"
         string email "U, R"
-        string password_hash "R"
+        string password_hash "R, encrypted (never plaintext)"
         string password_algo "R"
         datetime password_updated_at ""
         datetime last_login_at ""
-        string status "R"
+        string profile_photo_path "optional"
+        bigint status_id "R, FK -> ACCOUNT_STATUS_IND.id"
         datetime created_at "R"
         datetime updated_at "R"
     }
@@ -498,7 +533,7 @@ erDiagram
         string tier "R, trial|basic|plus"
         string billing_cycle "R, monthly|annual"
         decimal price "R"
-        string status "R, active|retired"
+        bigint status_id "R, FK -> PLAN_STATUS_IND.id"
         datetime created_at "R"
         datetime updated_at "R"
     }
@@ -509,9 +544,7 @@ erDiagram
         bigint home_gym_id "FK -> GYM.id (trial/basic), optional"
         date joined_on "R"
         date trial_expires_on ""
-        blob photo
-        string photo_algo ""
-        string status "R"
+        bigint status_id "R, FK -> ACCOUNT_STATUS_IND.id"
         datetime created_at "R"
         datetime updated_at "R"
     }
@@ -523,7 +556,7 @@ erDiagram
         datetime ends_at "R"
         int capacity "R"
         boolean open_for_booking "R"
-        string status "R"
+        bigint status_id "R, FK -> SESSION_STATUS_IND.id"
         datetime created_at "R"
         datetime updated_at "R"
     }
@@ -531,7 +564,7 @@ erDiagram
         bigint id "PK, R"
         bigint session_id "R, FK -> CLASS_SESSION.id"
         bigint member_id "R, FK -> MEMBER.id"
-        string status "R, confirmed|canceled_member|canceled_system"
+        bigint status_id "R, FK -> BOOKING_STATUS_IND.id"
         datetime booked_at "R"
         string cancellation_reason ""
         string notes ""
@@ -553,7 +586,7 @@ erDiagram
         bigint member_id "R, FK -> MEMBER.id"
         bigint gym_id "R, FK -> GYM.id"
         string card_uid "U, R, printed/encoded ID"
-        string status "R, active|lost|revoked"
+        bigint status_id "R, FK -> ACCESS_CARD_STATUS_IND.id"
         datetime issued_at "R"
         datetime revoked_at ""
         datetime created_at "R"
@@ -563,7 +596,7 @@ erDiagram
         bigint id "PK, R"
         string name "R"
         string address "R"
-        string status "R"
+        bigint status_id "R, FK -> GYM_STATUS_IND.id"
         datetime created_at "R"
         datetime updated_at "R"
     }
@@ -575,14 +608,14 @@ erDiagram
 - **Multi-valued:** none
 - **Derived:** none
 
-**Relevant triggers (?)**
+**Relevant triggers**
 - `booking_plus_only` - forbid `BOOKING` when member’s plan tier ≠ `plus`
 - `booking_capacity_guard` - ensure confirmed bookings ≤ `CLASS_SESSION.capacity`
 - `booking_unique_member_session` - prevent multiple active bookings for the same `(member_id, session_id)`
 - `booking_window_guard` - restrict bookings to current and next month per policy
 - `checkin_scope_guard` - allow `trial|basic` only at `home_gym_id`; `plus` at any gym
 - `access_card_status_guard` - forbid check-ins with `ACCESS_CARD.status IN ('lost','revoked')`
-- trigger to handle photo blob encryption/adding? (WIP)
+- `user_password_hash_enforce` - validate hash format
 
 **Relevant checks**
 - **Column-level**:
@@ -596,7 +629,13 @@ erDiagram
   - unique `(member_id, session_id)` in `BOOKING` (active rows)
   - unique `(card_uid)` in `ACCESS_CARD`
 
-**Indices (?)**
+**Indices**
+- `USER(username) UNIQUE`, `USER(email) UNIQUE`, `USER(status_id)`, `USER(last_login_at)`
+- `MEMBERSHIP_PLAN(name) UNIQUE`, `MEMBERSHIP_PLAN(tier, status_id)`, `MEMBERSHIP_PLAN(price)`
+- `MEMBER(user_id) UNIQUE`, `MEMBER(status_id)`, `MEMBER(membership_plan_id)`, `MEMBER(home_gym_id)`
+- `BOOKING(session_id, member_id) UNIQUE`, `BOOKING(member_id, booked_at)`, `BOOKING(status_id)`
+- `CHECK_IN(member_id, checked_in_at)`, `CHECK_IN(gym_id, checked_in_at)`
+- `ACCESS_CARD(card_uid) UNIQUE`, `ACCESS_CARD(member_id, status_id)`, `ACCESS_CARD(gym_id, status_id)`
 
 ---
 
@@ -621,6 +660,11 @@ erDiagram
     GYM   ||--o{ STAFF        : employs
     GYM   ||--o{ ADMIN        : has_admins
 
+    %% Status indicators (entity names only)
+    ACCOUNT_STATUS_IND ||--o{ USER  : classifies
+    ACCOUNT_STATUS_IND ||--o{ STAFF : classifies
+    GYM_STATUS_IND     ||--o{ GYM   : classifies
+
     %% Audits
     USER ||--o{ USER_AUD            : audited_by
     STAFF ||--o{ STAFF_AUD          : audited_by
@@ -628,13 +672,11 @@ erDiagram
     SUPER_ADMIN ||--o{ SUPER_ADMIN_AUD : audited_by
     GYM ||--o{ GYM_AUD              : audited_by
 
-    %% Entities
-    USER { bigint id "PK, R"  string username "U, R"  string email "U, R"  string status "R"  datetime created_at "R"  datetime updated_at "R" }
-    STAFF { bigint id "PK, R"  bigint user_id "U, R, FK -> USER.id"  bigint gym_id "R, FK -> GYM.id"  string status "R"  datetime created_at "R"  datetime updated_at "R" }
+    USER { bigint id "PK, R"  string username "U, R"  string email "U, R"  string password_hash "R, encrypted (never plaintext)"  string password_algo "R"  datetime password_updated_at ""  datetime last_login_at ""  string profile_photo_path "optional"  bigint status_id "R, FK -> ACCOUNT_STATUS_IND.id"  datetime created_at "R"  datetime updated_at "R" }
+    STAFF { bigint id "PK, R"  bigint user_id "U, R, FK -> USER.id"  bigint gym_id "R, FK -> GYM.id"  bigint status_id "R, FK -> ACCOUNT_STATUS_IND.id"  datetime created_at "R"  datetime updated_at "R" }
     ADMIN { bigint id "PK, R"  bigint staff_id "U, R, FK -> STAFF.id"  string scope "R, gym"  datetime created_at "R"  datetime updated_at "R" }
     SUPER_ADMIN { bigint id "PK, R"  bigint user_id "U, R, FK -> USER.id"  string scope "R, global"  datetime created_at "R"  datetime updated_at "R" }
-    GYM { bigint id "PK, R"  string name "R"  string address "R"  string status "R"  datetime created_at "R"  datetime updated_at "R" }
-
+    GYM { bigint id "PK, R"  string name "R"  string address "R"  bigint status_id "R, FK -> GYM_STATUS_IND.id"  datetime created_at "R"  datetime updated_at "R" }
 ```
 
 **Attribute types**
@@ -643,7 +685,7 @@ erDiagram
 - **Multi-valued:** none
 - **Derived:** none
 
-**Relevant triggers (?)**
+**Relevant triggers**
 - `admin_scope_guard` - enforce privilege scope is bound to one gym
 - `user_admin_status_guard` - prevent orphaning of active users that have other roles
 - maybe add one so some admin actions need approval from more admins
@@ -655,12 +697,15 @@ erDiagram
 - **Table-level**:
   - Unique `(user_id)` in `STAFF`; unique `(staff_id)` in `ADMIN`
 
-**Indices (?)**
-
+**Indices**
+- `USER(username) UNIQUE`, `USER(email) UNIQUE`, `USER(status_id)`
+- `STAFF(user_id) UNIQUE`, `STAFF(gym_id, status_id)`
+- `ADMIN(staff_id) UNIQUE`
+- `GYM(name)`, `GYM(status_id)`
 ---
 
-## 7) Audit Table Structure
-_Generic reference structure for all `*_AUD` tables._
+## 7) Status Indicator Table Structure
+_Generic structure for all `*_STATUS_IND` tables (serves as lookup tables)._
 
 ```mermaid
 ---
@@ -673,8 +718,57 @@ config:
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
-    %% Dummy template showing audit pattern
+    %% any *_STATUS_IND
+    BASE_ENTITY_STATUS_IND {
+        bigint id "PK, R"
+        string code "U, R"
+        string label "R"
+        datetime created_at "R"
+        datetime updated_at "R"
+    }
 
+    %% example linkage
+    BASE_ENTITY {
+        bigint id "PK, R"
+        bigint status_id "R, FK -> ANY_STATUS_IND.id"
+    }
+
+    BASE_ENTITY_STATUS_IND ||--o{ BASE_ENTITY : classifies
+```
+
+**Indicator families (examples)**
+- `ACCOUNT_STATUS_IND` → `USER.status_id`, `STAFF.status_id`, `MEMBER.status_id`
+  Codes: `ACTIVE, INACTIVE, LOCKED, SUSPENDED, CANCELED`
+- `GYM_STATUS_IND` → `GYM.status_id` (e.g., `ACTIVE, INACTIVE`)
+- `EQUIPMENT_STATUS_IND` → `EQUIPMENT_ITEM.status_id` (`OK, NEEDS_SERVICE, OUT_OF_ORDER, RETIRED`)
+- `SESSION_STATUS_IND` → `CLASS_SESSION.status_id` (`SCHEDULED, CANCELED, COMPLETED`)
+- `AVAILABILITY_STATUS_IND` → `TRAINER_AVAIL_DATE.status_id` (`AVAILABLE, UNAVAILABLE`)
+- `PLAN_STATUS_IND` → `MEMBERSHIP_PLAN.status_id` (`ACTIVE, RETIRED`)
+- `ACCESS_CARD_STATUS_IND` → `ACCESS_CARD.status_id` (`ACTIVE, LOST, REVOKED`)
+- `BOOKING_STATUS_IND` → `BOOKING.status_id` (`CONFIRMED, CANCELED_MEMBER, CANCELED_SYSTEM`)
+
+**Querying pattern examples**
+- Active members:
+  `... JOIN ACCOUNT_STATUS_IND si ON m.status_id = si.id AND si.code = 'ACTIVE'`
+- Sessions open & scheduled:
+  `... JOIN SESSION_STATUS_IND ssi ON cs.status_id = ssi.id AND ssi.code = 'SCHEDULED' AND cs.open_for_booking = TRUE`
+- Equipment out or needs service:
+  `... JOIN EQUIPMENT_STATUS_IND esi ON ei.status_id = esi.id AND esi.code IN ('NEEDS_SERVICE','OUT_OF_ORDER')`
+
+---
+
+## 8) Audit Table Structure
+_Generic structure for all `*_AUD` tables._
+
+```mermaid
+---
+config:
+  theme: redux-color
+  look: neo
+  layout: elk
+  elk: { mergeEdges: True, nodePlacementStrategy: LINEAR_SEGMENTS }
+---
+erDiagram
     BASE_ENTITY ||--o{ BASE_ENTITY_AUD : audited_by
 
     BASE_ENTITY {
@@ -697,5 +791,14 @@ erDiagram
     }
 ```
 
-**How states are captured (?)**
-- Triggers on base tables (`BEFORE UPDATE/DELETE`, `AFTER INSERT/UPDATE`) populate `before_json`/`after_json` and record `actor_user_id`, `occurred_at` in the same transaction
+**How states are captured**
+- Row-level triggers (`BEFORE UPDATE/DELETE`, `AFTER INSERT/UPDATE`) populate `before_json`/`after_json` and record `actor_user_id`, `occurred_at` in the same transaction.
+
+**Constraints & integrity**
+- `*_AUD.{entity}_id` is `FK` to base table with `ON DELETE RESTRICT`.
+
+**Indices**
+- On audits: `(occurred_at)`, `(actor_user_id, occurred_at)`, `({entity}_id, occurred_at)`.
+
+**Rollback considerations**
+- Logical rollbacks can restore a prior state from `before_json` under admin control; wrap multi-entity operations in single transactions to preserve consistency.
