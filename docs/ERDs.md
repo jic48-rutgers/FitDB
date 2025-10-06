@@ -781,24 +781,28 @@ erDiagram
     BASE_ENTITY_AUD {
         bigint id "PK, R"
         bigint base_entity_id "R, FK -> BASE_ENTITY.id"
+        bigint seq_no "R"
         datetime occurred_at "R"
         string action "R, insert|update|delete"
-        string before_json ""
-        string after_json ""
+        string after_json "R"
         bigint actor_user_id "R, FK -> USER.id"
         datetime created_at "R"
         datetime updated_at "R"
     }
 ```
 
-**How states are captured**
-- Row-level triggers (`BEFORE UPDATE/DELETE`, `AFTER INSERT/UPDATE`) populate `before_json`/`after_json` and record `actor_user_id`, `occurred_at` in the same transaction.
+**How states are captured (updated)**
+- Triggers write `after_json` for each event. Prior state can be reconstructed from the **previous audit row’s `after_json`** (append-only history)
+- `seq_no` provides a reliable ordering of the audits
 
 **Constraints & integrity**
-- `*_AUD.{entity}_id` is `FK` to base table with `ON DELETE RESTRICT`.
+- `BASE_ENTITY_AUD(base_entity_id) → BASE_ENTITY(id)`
+- `UNIQUE(seq_no)` (per-table sequence), plus index `(base_entity_id, seq_no)` for efficient timelines.
 
-**Indices**
-- On audits: `(occurred_at)`, `(actor_user_id, occurred_at)`, `({entity}_id, occurred_at)`.
+**Recommended indices (updated)**
+- `(base_entity_id, seq_no)` **covering index** (primary read path)
+- `(actor_user_id, seq_no)` for actor timelines
+- `(occurred_at)` for time-range queries
 
 **Rollback considerations**
-- Logical rollbacks can restore a prior state from `before_json` under admin control; wrap multi-entity operations in single transactions to preserve consistency.
+- Rollbacks are constructed using the last **valid `after_json`** snapshot prior to the target time/sequence number (transactions are applied in reverse order to avoid inconsistencies)

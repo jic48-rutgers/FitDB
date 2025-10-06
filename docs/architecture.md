@@ -17,7 +17,7 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 - reporting
 
 **To Avoid:**
-- focus on on things this project doesn't address such as payrolls
+- focus on on things this project doesn't address such as payrolls and also payment handling (for MVP)
 
 **Extensibility Goal:**
 - the schema and services should be designed to scale to many gyms, trainers, members, and overlapping class sessions
