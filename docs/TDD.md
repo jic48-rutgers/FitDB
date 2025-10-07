@@ -116,7 +116,7 @@ erDiagram
 - **1:1**
   - `USER` ↔ `MEMBER` (optional specialization per user)
   - `USER` ↔ `STAFF` (optional specialization per user)
-  - `STAFF` ↔ `ADMIN` / `TRAINER` / `MANAGER` / `FLOOR_MANAGER` / `FRONT_DESK` (each role entity entry corresponds to exactly one `STAFF` row)
+  - `STAFF` ↔ `ADMIN` / `TRAINER` / `MANAGER` / `FLOOR_MANAGER` / `FRONT_DESK` (each role maps to exactly one `STAFF`)
 - **1:N**
   - `GYM` → `STAFF`, `ADMIN`, `CLASS_SESSION`, `CHECK_IN`, `EQUIPMENT_ITEM`, `INVENTORY_COUNT`, `MEMBER`
   - `EQUIP_KIND` → `EQUIPMENT_ITEM`, `INVENTORY_COUNT`
@@ -126,7 +126,7 @@ erDiagram
   - `GYM` → `ACCESS_CARD`
 - **M:N**
   - `CLASS_SESSION` ↔ `TRAINER` (through `SESSION_TRAINER`)
-  - `FLOOR_MANAGER` ↔ `EQUIPMENT_ITEM` (through monitoring association)
+  - `FLOOR_MANAGER` ↔ `EQUIPMENT_ITEM` (monitoring)
   - `CLASS_SESSION` ↔ `EQUIP_KIND` (through **weak** `SESSION_EQUIP_RESERVATION`)
   - `MEMBER` ↔ `GYM` (through `CHECK_IN`)
 
@@ -156,31 +156,80 @@ erDiagram
 **Booking Workflow (transactional)**
 1. verify role = `plus_member`; session is `scheduled` and within bookable window
 2. capacity check + equipment sufficiency (per-attendee requirements × seats)
-3. insert `Booking`; write `AuditLog`; commit or rollback on any failure
+3. insert `Booking`; write audit; commit or rollback on any failure
 
 **Publish Sessions (manager)**
 1. expand `TrainerAvailability` into sessions for date range
-2. validate conflicts and equipment availability; create `ClassSession` rows; write audit in a single transaction
+2. validate conflicts and equipment availability; create `ClassSession` rows; write audit transactionally
 
 **Check-In**
 - validate active membership; insert `CheckIn`; write audit
 
-**RBAC Mapping (selected)**
-- `member`: read-only sessions, own profile/check-ins
-- `plus_member`: `member` + create/cancel own bookings
-- `trainer`: manage own availability; view rosters
-- `manager`: publish sessions; view any roster
-- `front_desk`: check-ins only; read-only member status
-- `floor_manager`: manage equipment
-- `admin`: all privileges
+#### Stored Procedures
+- **`sp_book_session(p_member_id, p_session_id)`**: validates plus membership, capacity, status; inserts `BOOKING`; writes `BOOKING_AUD`.
+- **`sp_cancel_booking(p_member_id, p_booking_id, p_reason)`**: ensures staff/admin; updates status; writes `BOOKING_AUD`.
+- **`sp_check_in(p_member_id, p_gym_id, p_card_uid)`**: validates membership/card; inserts `CHECK_IN`; writes `CHECK_IN_AUD`.
+- **`sp_set_availability(p_trainer_id, p_gym_id, p_for_date, p_period)`** / **`sp_remove_availability(...)`**: upsert/delete `TRAINER_AVAIL_DATE`; write `TRAINER_AVAIL_DATE_AUD`.
+- **`sp_publish_sessions(p_gym_id, p_start_date, p_end_date)`**: creates `CLASS_SESSION` batches from availability; writes `CLASS_SESSION_AUD`.
+- **`sp_assign_trainer(p_session_id, p_trainer_id, p_role)`** / **`sp_unassign_trainer(...)`**: maintains `SESSION_TRAINER`; writes `SESSION_TRAINER_AUD`.
+- **`sp_reserve_session_equipment(p_session_id, p_equip_kind_id, p_qty)`**: upsert `SESSION_EQUIP_RESERVATION`; validates stock; writes `SESSION_EQUIP_RES_AUD`.
+- **`sp_log_equipment_service(p_item_id, p_action, p_staff_id, p_notes)`**: inserts `SERVICE_LOG`; updates flags; writes `SERVICE_LOG_AUD`.
+- **`sp_snapshot_inventory(p_gym_id)`**: recomputes `INVENTORY_COUNT` for dashboards; writes `INVENTORY_COUNT_AUD`.
+- **`sp_member_register(p_user_id, p_plan_id, p_home_gym_id)`**: creates `MEMBER`; assigns role; writes `MEMBER_AUD`.
+- **`sp_access_card_issue(p_member_id, p_gym_id, p_card_uid)`** / **`sp_access_card_revoke(...)`**: maintains `ACCESS_CARD`; writes `ACCESS_CARD_AUD`.
 
-### 4.4 User Interface (server-rendered MVP)
-- **Member (trial/basic/plus):** profile, check-ins, sessions (plus can book/cancel).
-- **Trainer:** manage availability; view rosters.
-- **Manager/Front Desk:** publish/cancel, assign trainers; check-ins; registration.
-- **Floor Manager:** equipment dashboard (status/alerts), log service/cleaning.
-- **Admin (gym):** full control within assigned gym.
-- **Super Admin (global):** cross-gym admin.
+> **Audit note:** procedures call a shared helper to append a `*_AUD` row with `(seq_no, occurred_at, action, after_json, actor_user_id)` (WIP)
+
+#### RBAC Mapping
+
+- **`r_member`**
+  - **EXECUTE:** `sp_check_in`, read-only helper procs
+  - **SELECT:** views `vw_sessions_open`, `vw_member_profile`, `vw_member_checkins`, `vw_member_bookings`
+- **`r_plus_member`** (inherits `r_member`)
+  - **EXECUTE:** `sp_book_session`, `sp_cancel_booking`
+  - **SELECT:** `vw_bookable_sessions`
+- **`r_trainer`**
+  - **EXECUTE:** `sp_set_availability`, `sp_remove_availability`
+  - **SELECT:** `vw_trainer_schedule`, `vw_trainer_class_rosters`
+- **`r_manager`**
+  - **EXECUTE:** `sp_publish_sessions`, `sp_assign_trainer`, `sp_unassign_trainer`
+  - **SELECT:** `vw_equipment_demand`, `vw_class_utilization`, `vw_all_rosters`
+- **`r_front_desk`**
+  - **EXECUTE:** `sp_check_in`, `sp_access_card_issue`, `sp_access_card_revoke`
+  - **SELECT:** `vw_member_lookup_minimal`, `vw_cards_by_gym`
+- **`r_floor_manager`**
+  - **EXECUTE:** `sp_log_equipment_service`, `sp_snapshot_inventory`
+  - **SELECT:** `vw_equipment_status`, `vw_cleaning_due`, `vw_service_due`
+- **`r_admin_gym`**
+  - **EXECUTE:** all above + maintenance procs
+  - **SELECT/INSERT/UPDATE/DELETE:** on gym-scoped tables where needed
+- **`r_super_admin`**
+  - **ALL PRIVILEGES** incl. `CREATE ROLE`, `GRANT`
+
+### 4.4 User Interface
+- **Member (trial/basic/plus):** profile, check-ins, sessions (plus can book/cancel)
+- **Trainer:** manage availability; view rosters
+- **Manager/Front Desk:** publish/cancel, assign trainers; check-ins; registration
+- **Floor Manager:** equipment dashboard (status/alerts), log service/cleaning
+- **Admin (gym):** full control within assigned gym
+- **Super Admin (global):** cross-gym admin
+
+#### 4.4.1 SQL Views
+- **`vw_sessions_open`**: sessions `SCHEDULED` & `open_for_booking`
+- **`vw_bookable_sessions`**: `vw_sessions_open` + capacity remaining; hides full sessions
+- **`vw_trainer_schedule`**: availability vs. assigned sessions for a trainer
+- **`vw_trainer_class_rosters`**: roster with member display name
+- **`vw_class_utilization`**: per-session capacity, seats taken, % utilization
+- **`vw_equipment_status`**: item status, service/clean flags; by gym
+- **`vw_cleaning_due` / `vw_service_due`**: items due by date, etc.
+- **`vw_equipment_demand`**:`SESSION_EQUIP_RESERVATION` and frequency of use
+- **`vw_member_profile`**: safe member profile (joins `USER`), photo path inherited from `USER`.
+- **`vw_member_bookings` / `vw_member_checkins`**: member-scoped history
+- **`vw_member_lookup_minimal`**: front-desk-friendly lookup (username, plan, photo path)
+- **`vw_cards_by_gym`**: active cards issued by gym
+
+_View Note_
+- WHERE clauses enforce active statuse
 
 ## 5. Technology Stack
 - **Backend:** Python + Flask
@@ -188,9 +237,9 @@ erDiagram
 - **Frontend:** HTML/CSS (for now)
 
 ## 6. Security & Compliance
-- Password hashing & Profile Picture Encryption
-- **MySQL roles** with least-privilege grants; `plus_member` inherits from `member`, etc.
-- **Audit logging** via DB triggers (append-only)
+- Passwords: encrypted (never plaintext); profile photos stored as file paths (default image when NULL).
+- **MySQL roles** with least-privilege grants; `plus_member` inherits from `member`
+- **Audit logging** via DB triggers (append-only with `seq_no`, `after_json`)
 - Parameterized queries only
 
 ## 7. Performance Considerations
@@ -210,6 +259,6 @@ erDiagram
 - **SQL tests:** views return expected utilization/equipment demand
 
 ## 10. Deployment & Monitoring
-- **Runtime logging:** audit stored in DB (as JSON)
+- **Runtime logging:** audit stored in DB as JSON snapshots
 - **Metrics:** latency, error rates, booking success/failure counts
-- **Backups:** do DB snapshots/backups
+- **Backups:** DB snapshots/backups
