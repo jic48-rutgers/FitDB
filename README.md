@@ -9,19 +9,6 @@ A Gym Membership Management System emphasizing database design: registrations, c
 - **Must-have flows:** register member, check-in, publish sessions from availability, book seat (plus only), cancel, view rosters, managers can issue strikes/bans to members, allocate equipment, managers can generate reports, audit log on every write.
 - **Out-of-scope:** payroll, billing, comms (email/SMS).
 
-## Roadmap (WIP)
-```mermaid
-gantt
-    dateFormat  YYYY-MM-DD
-    title FitDB Project Roadmap (WIP)
-    section Phase 1: Planning & Design
-    section Phase 2: Development
-    section Phase 3: Services & Interface
-    section Phase 4: Testing & Optimization
-    section Phase 5: Finalize & Delivery
-```
-
-
 ## Stack (proposed)
 - Python • Flask
 - MySQL
@@ -32,4 +19,5 @@ gantt
 - [`contributors.md`](./docs/contributors.md) – people, roles, responsibilities, and collaboration guidelines
 - [`architecture.md`](./docs/architecture.md) – overview, context, components, deployment, data flows, security summary
 - [`FRD.md`](./docs/FRD.md) – scope, requirements, stakeholders, acceptance criteria, and assumptions
-- [`TDD.md`](./docs/TDD.md) - technical design, data model, APIs, security, performance, testing.
+- [`TDD.md`](./docs/TDD.md) - technical design, data model, APIs, security, performance, testing
+- [`ERDs.md`](./docs/ERDs.md) - simpler overview of DB tables, table details, status tables, audit specifications
