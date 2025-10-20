@@ -23,41 +23,41 @@ SET NAMES utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 -- turns off foreign key validation checks while building
 SET FOREIGN_KEY_CHECKS = 0;
 
--- 1) Load Helpers ----
+-- 0.4 Load Helpers ----
 
----- 1.1 roles (definitions; grants happen at the end) ----
+---- 0.4.1 roles (definitions; grants happen at the end) ----
 SOURCE ./helpers/01_roles.sql;
 
----- 1.2 indicator (status) tables (8 total) ----
+---- 0.4.2 indicator (status) tables (8 total) ----
 SOURCE ./helpers/02_indicator_tables.sql;
 
----- 1.3 core tables (22 total) ----
+---- 0.4.3 core tables (22 total) ----
 SOURCE ./helpers/03_core_tables.sql;
 
----- 4) audit tables (22 total) ----
+---- 0.4.4 audit tables (22 total) ----
 SOURCE ./helpers/04_audit_tables.sql;
 
----- 5) triggers ----
+---- 0.4.5 triggers ----
 SOURCE ./helpers/05_triggers.sql;
 
----- 6) indexes ----
+---- 0.4.6 indexes ----
 SOURCE ./helpers/06_indexes.sql;
 
----- 7) views ----
+---- 0.4.7 views ----
 SOURCE ./helpers/07_views.sql;
 
----- 8) stored procedures ----
+---- 0.4.8 stored procedures ----
 SOURCE ./helpers/08_procedures.sql;
 
--- 2) Role grants ----
----- 2.1 attach base role to app user  ----
+-- 0.5 Role grants ----
+---- 0.5.1 attach base role to app user  ----
 GRANT r_member TO 'fitdb_app'@'%';
 SET DEFAULT ROLE r_member FOR 'fitdb_app'@'%';
 
----- 2.2 roles set for app user ----
+---- 0.5.2 roles set for app user ----
 GRANT r_plus_member, r_trainer, r_manager, r_front_desk, r_floor_manager, r_admin_gym TO 'fitdb_app'@'%';
 
----- 2.3 SELECT permissions on views ----
+---- 0.5.3 SELECT permissions on views ----
 GRANT SELECT ON `fitdb`.vw_sessions_open            TO r_member;
 GRANT SELECT ON `fitdb`.vw_bookable_sessions        TO r_plus_member;
 GRANT SELECT ON `fitdb`.vw_member_profile           TO r_member;
@@ -73,7 +73,7 @@ GRANT SELECT ON `fitdb`.vw_equipment_demand         TO r_manager, r_admin_gym;
 GRANT SELECT ON `fitdb`.vw_cards_by_gym             TO r_front_desk, r_manager;
 GRANT SELECT ON `fitdb`.vw_member_lookup_minimal    TO r_front_desk;
 
----- 2.4 EXECUTE permissions on procedures ----
+---- 0.5.4 EXECUTE permissions on procedures ----
 GRANT EXECUTE ON PROCEDURE `fitdb`.sp_book_session        TO r_plus_member;
 GRANT EXECUTE ON PROCEDURE `fitdb`.sp_cancel_booking      TO r_plus_member, r_manager, r_admin_gym;
 GRANT EXECUTE ON PROCEDURE `fitdb`.sp_check_in            TO r_front_desk, r_manager;
@@ -81,10 +81,10 @@ GRANT EXECUTE ON PROCEDURE `fitdb`.sp_set_availability    TO r_trainer;
 GRANT EXECUTE ON PROCEDURE `fitdb`.sp_publish_sessions    TO r_manager, r_admin_gym;
 GRANT EXECUTE ON PROCEDURE `fitdb`.sp_access_card_issue   TO r_front_desk, r_manager;
 
----- 2.5 admin roles ----
+---- 0.5.5 admin roles ----
 GRANT SELECT, INSERT, UPDATE, DELETE ON `fitdb`.* TO r_admin_gym;
 GRANT ALL PRIVILEGES ON `fitdb`.*                 TO r_super_admin;
 
----- 2.6 re-enable FKs ----
+---- 0.5.6 re-enable FKs ----
 -- turns on foreign key validation checks since done building
 SET FOREIGN_KEY_CHECKS = 1;
