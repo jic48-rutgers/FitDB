@@ -1,29 +1,98 @@
 # Technical Design Document
 
 ## 1. Document Control
-- **Version:** 1.3
-- **Authors:** Henry Huerta, Jared Cordova
-- **Date:** 2025-09-29
-- **Reviewers:** Prof. Arnold Lau, T.A. Sneh Bhandari
+- **Version:**  2.0
+- **Author:**  Henry Huerta
+- **Date:**  2025-10-29
+- **Reviewers:**  Prof. Arnold Lau, T.A. Sneh Bhandari
 
 ## 2. Introduction
-This TDD specifies the technical implementation details for the Gym Membership Management System (“FitDB”). The design emphasizes the database layer: RBAC (SQL roles), auditable transactions, and denormalized reporting views.
+This TDD specifies the technical implementation details for the Gym Membership Management System ("FitDB"). The design emphasizes the database layer: RBAC (SQL roles), auditable transactions, and denormalized reporting views.
 
-(See [`README.md`](./docs/README.md) for MVP and roadmap.)
+(See [`README.md`](../README.md) for MVP and roadmap, and [`MVP_SCOPE.md`](./MVP_SCOPE.md) for detailed MVP clarification.)
+
+### 2.1 MVP Scope
+**Current Phase (MVP):**
+The MVP focuses exclusively on core account and access card management:
+- User account creation (username, email, password)
+- Member account registration by front desk managers
+- Access card issuance by front desk managers
+- Audit logging for all operations
+- RBAC infrastructure (front desk manager role enabled)
+
+**Future Phases:**
+While the database schema supports the full feature set, the following will be implemented post-MVP:
+- Session management and bookings
+- Check-in system
+- Equipment management
+- Reporting and analytics
+- Advanced member management
+
+The database schema is designed to support all future features without requiring schema changes.
 
 ## 3. High-Level Architecture
-- Services: Auth/RBAC, Membership, Scheduling, Equipment, Reporting, Audit
-- Backend: Flask (Python)
-- Database: MySQL (system of record)
-- Dev: static assets and member photos stored locally in dev
+- **Application Layer:** Flask (Python) web framework
+- **Database Layer:** MySQL (system of record)
+- **Services:** Auth/RBAC, Membership, Audit
+- **Storage:** Static assets and member photos stored locally in development
+- **Future:** AWS S3 for production photo storage, optional load balancing
 
-(create visual diagram)
+### 3.1 Three-Tier Architecture
+| Layer                | Description / Responsibilities                                                                                                          |
+|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| **Presentation**     | Flask Templates, HTML/CSS                                                                                                               |
+|                      | *User Interface*                                                                                                                        |
+| **Business Logic**   | Flask App (Python):                                                                                                                     |
+|                      | &mdash; Authentication & Authorization<br> &mdash; Business Rules Enforcement<br> &mdash; Transaction Management<br> &mdash; Audit Logging |
+| **Data Layer**       | MySQL+:                                                                                                                             |
+|                      | &mdash; Tables, Views, Procedures<br> &mdash; Triggers, Indexes<br> &mdash; RBAC via SQL Roles<br> &mdash; Audit Tables                   |
 
 ## 4. Detailed Design
 
 ### 4.1 Data Model
-**ER Diagram (WIP)**
+**ER Diagram**
 _Overview with audit tables. For separated diagrams (overview **without** audits, plus three clearer ERDs), see **[ERDs.md](./ERDs.md)**._
+
+#### 4.1.0 Database Design Decisions
+
+**Normalization Level:**
+- **Chosen:** Third Normal Form (3NF)
+- **Rationale:** 
+  - Eliminates redundancy without sacrificing query performance
+  - Maintains data integrity through proper foreign key relationships
+  - Allows for efficient updates and joins
+  - Balance between normalization and practical considerations
+
+**Strategic Denormalization:**
+- **Audit Tables:** Use `after_json` field to store complete snapshots (allows for quick state reconstruction without joins)
+- **Reporting Views:** Denormalized views aggregate data for fast queries (utilization, equipment demand)
+- **Rationale:** Performance optimization for read-heavy operations while maintaining single source of truth in base tables
+
+**Indexing Strategy:**
+- **Primary Keys:** All tables have auto-incrementing BIGINT primary keys
+- **Foreign Keys:** Automatically indexed in MySQL
+- **Unique Constraints:** Username, email, card_uid, composite keys for business rules
+- **Composite Indexes:** Created on frequently queried combinations (e.g., `(gym_id, starts_at)`, `(member_id, session_id)`)
+- **Covering Indexes:** Audit tables indexed for common query patterns
+
+**Data Type Choices:**
+- **BIGINT for IDs:** Supports scaling to millions of records
+- **VARCHAR for text:** Appropriate lengths to prevent waste and overflow
+- **DATETIME for timestamps:** Precise to second granularity (sufficient for business needs)
+- **DATE for dates:** Used where time-of-day is irrelevant (membership dates, availability)
+- **ENUM considered but rejected:** Status values stored via foreign keys to indicator tables (more flexible, easier to add/modify values)
+
+**Referential Integrity:**
+- **Foreign Keys:** Enforced on all relationships
+- **ON DELETE Behavior:** 
+  - `CASCADE` for audit tables (deleting a record should remove its audit trail)
+  - `RESTRICT` for core relationships (prevent deletion that would orphan records)
+- **ON UPDATE:** Default `CASCADE` for ID propagation
+
+**Constraint Enforcement:**
+- **Check Constraints:** Column-level validation (status codes, date ranges, quantities ≥ 0)
+- **Triggers:** Business rule enforcement that cannot be expressed via simple constraints
+- **Application Layer:** Additional validation for complex business logic
 
 ```mermaid
 ---
@@ -32,7 +101,6 @@ config:
   look: neo
   layout: elk
   elk:
-    mergeEdges: True
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -144,15 +212,54 @@ erDiagram
 > **Note:**
 > indexes, attribute typing (key/derived/multi-valued/composite), and the detailed audit schema will be documented in **ERDs.md**.
 
-### 4.2 API Design
-- Auth: `POST /api/auth/login`, `GET /api/me`
-- Sessions & Booking: `GET /api/sessions`, `POST /api/bookings`, `DELETE /api/bookings/{id}`
-- Trainer: `GET/POST /api/trainer/availability` (AM/PM per date)
-- Manager: `POST /api/manager/sessions` (create/cancel/assign trainer)
-- Equipment: `GET /api/equipment/items`, `POST /api/equipment/service-logs`
-- Reports: `GET /api/reports/class-utilization`, `GET /api/reports/equipment-demand`
+### 4.2 API Design (Post-MVP)
+- **Auth:** `POST /api/auth/register` (user account creation), `POST /api/auth/login`, `GET /api/me`
+- **Front Desk:** `POST /api/front-desk/members` (create member account), `POST /api/front-desk/access-cards` (issue access card)
+- **Sessions & Booking:** `GET /api/sessions`, `POST /api/bookings`, `DELETE /api/bookings/{id}`
+- **Trainer:** `GET/POST /api/trainer/availability` (AM/PM per date)
+- **Manager:** `POST /api/manager/sessions` (create/cancel/assign trainer)
+- **Equipment:** `GET /api/equipment/items`, `POST /api/equipment/service-logs`
+- **Reports:** `GET /api/reports/class-utilization`, `GET /api/reports/equipment-demand`
 
-### 4.3 Application Logic
+### 4.3 Entitlements Matrix
+
+The following table maps system functions to roles and their access levels:
+
+| Function | r_member | r_plus_member | r_trainer | r_front_desk | r_floor_manager | r_manager | r_admin_gym | r_super_admin |
+|----------|----------|---------------|-----------|--------------|-----------------|----------|-------------|---------------|
+| **View Functions** |
+| View personal profile | ✓ | ✓ | ✓* | ✗ | ✗ | ✓ | ✓ | ✓ |
+| View own bookings | ✓ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| View own check-ins | ✓ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| View available sessions | ✓ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| View bookable sessions | ✗ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| View trainer schedule | ✗ | ✗ | ✓ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| View class rosters | ✗ | ✗ | ✓* | ✗ | ✗ | ✓ | ✓ | ✓ |
+| View member lookup | ✗ | ✗ | ✗ | ✓ | ✗ | ✓ | ✓ | ✓ |
+| View equipment status | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ |
+| View utilization reports | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| View equipment demand | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| View audit logs | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
+| **Action Functions** |
+| Book session | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
+| Cancel own booking | ✗ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| Check in | ✓* | ✓* | ✗ | ✓ | ✗ | ✓ | ✓ | ✓ |
+| Set availability | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ |
+| Publish sessions | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| Assign trainers | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| Issue access card | ✗ | ✗ | ✗ | ✓ | ✗ | ✓ | ✓ | ✓ |
+| Revoke access card | ✗ | ✗ | ✗ | ✓ | ✗ | ✓ | ✓ | ✓ |
+| Log equipment service | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ |
+| Snapshot inventory | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ |
+| Register member | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| Ban member | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| Create user accounts | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
+| Manage gyms | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| Manage roles | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
+
+*Note:* Trainers viewing personal profiles see trainer-specific views; members checking in require appropriate membership status.
+
+### 4.4 Application Logic
 **Booking Workflow (transactional)**
 1. verify role = `plus_member`; session is `scheduled` and within bookable window
 2. capacity check + equipment sufficiency (per-attendee requirements × seats)
@@ -206,15 +313,162 @@ erDiagram
 - **`r_super_admin`**
   - **ALL PRIVILEGES** incl. `CREATE ROLE`, `GRANT`
 
-### 4.4 User Interface
-- **Member (trial/basic/plus):** profile, check-ins, sessions (plus can book/cancel)
-- **Trainer:** manage availability; view rosters
-- **Manager/Front Desk:** publish/cancel, assign trainers; check-ins; registration
-- **Floor Manager:** equipment dashboard (status/alerts), log service/cleaning
-- **Admin (gym):** full control within assigned gym
-- **Super Admin (global):** cross-gym admin
+### 4.5 User Interface
 
-#### 4.4.1 SQL Views
+#### 4.5.1 Interface Types
+
+**Web-Based Portal (Flask Application)**
+- **Primary Interface:** Browser-based web application
+- **Technology:** Flask templates for server-side rendering
+- **Responsive Design:** Mobile-friendly CSS
+- **No JavaScript Framework:** Vanilla JavaScript for MVP simplicity
+
+**Database CLI Access**
+- **Direct Access:** MySQL command-line for admins
+- **Read-Only:** Most users interact via application layer
+- **Procedures:** Business operations via stored procedures
+
+#### 4.5.2 MVP Interfaces (Post-MVP)
+
+**User Account Creation Page**
+```
+Registration Form:
+├── Username input
+├── Email input
+├── Password input
+└── Submit → Creates USER account
+```
+
+**Front Desk Manager Console**
+```
+Dashboard:
+├── Member Registration
+│   ├── User lookup (by username/ID)
+│   ├── Membership plan selection
+│   ├── Home gym selection
+│   └── Create member account
+└── Access Card Management
+    ├── Member lookup
+    ├── Card UID input
+    ├── Gym selection
+    └── Issue access card
+```
+
+#### 4.5.3 Future Interfaces (Post-MVP)
+
+**Member Portal (trial/basic/plus)**
+```
+Dashboard:
+├── Profile View
+│   ├── Personal information
+│   ├── Membership plan details
+│   ├── Check-in history
+│   └── Access card status
+├── Class Sessions
+│   ├── Available sessions list
+│   └── Upcoming sessions (plus only)
+├── Bookings (plus only)
+│   ├── Current bookings
+│   └── Booking cancellation
+└── Check-In
+    └── Manual check-in option
+```
+
+**Trainer Portal**
+```
+Dashboard:
+├── Availability Management
+│   ├── View availability calendar
+│   ├── Set availability (date/period)
+│   └── Remove availability
+└── Class Rosters
+    ├── Assigned sessions
+    └── Member attendance lists
+```
+
+**Manager Console**
+```
+Dashboard:
+├── Session Management
+│   ├── View trainer availability
+│   ├── Publish sessions
+│   ├── Assign trainers
+│   └── Cancel sessions
+├── Member Management
+│   ├── Member lookup
+│   ├── Register new members
+│   ├── Issue strikes/bans
+│   └── Revoke access cards
+└── Reporting
+    ├── Class utilization
+    ├── Equipment demand
+    └── Member analytics
+```
+
+**Front Desk Console**
+```
+Dashboard:
+├── Member Lookup
+│   └── Search by username/email
+├── Check-In Management
+│   ├── Manual check-in
+│   └── Card-based check-in
+└── Access Card Management
+    ├── Issue new cards
+    └── Revoke lost cards
+```
+
+**Floor Manager Console**
+```
+Dashboard:
+├── Equipment Status
+│   ├── By equipment type
+│   ├── By status (OK/Needs Service/Out of Order)
+│   └── Cleaning due alerts
+├── Service Management
+│   ├── Log service actions
+│   └── Update equipment status
+└── Inventory Snapshots
+    └── Manual inventory counts
+```
+
+**Admin Console (Gym-Scoped)**
+```
+Dashboard:
+├── Full Manager Access
+├── User Management
+│   ├── Create users
+│   ├── Assign roles
+│   └── Deactivate accounts
+├── Audit Viewer
+│   └── View all audit logs
+└── System Configuration
+    └── Gym-specific settings
+```
+
+**Super Admin Console (Global)**
+```
+Dashboard:
+├── All Admin Functions
+├── Multi-Gym Management
+│   ├── Create/edit gyms
+│   └── Gym status management
+├── Global User Management
+├── Role Management
+│   ├── Grant/revoke roles
+│   └── Role hierarchies
+└── System-Wide Reports
+```
+
+#### 4.5.4 Interface Design Principles
+- **Role-Based Dashboards:** Customized views per user role
+- **Progressive Disclosure:** Show only relevant information
+- **Responsive Tables:** Pagination for large datasets
+- **Real-Time Updates:** Session capacity updates, booking confirmations
+- **Error Handling:** Clear error messages with actionable guidance
+- **Accessibility:** Semantic HTML, ARIA labels (MVP basic support)
+
+### 4.6 SQL Views
 - **`vw_sessions_open`**: sessions `SCHEDULED` & `open_for_booking`
 - **`vw_bookable_sessions`**: `vw_sessions_open` + capacity remaining; hides full sessions
 - **`vw_trainer_schedule`**: availability vs. assigned sessions for a trainer
@@ -232,33 +486,155 @@ _View Note_
 - WHERE clauses enforce active statuse
 
 ## 5. Technology Stack
-- **Backend:** Python + Flask
+
+### 5.1 Core Technologies
+- **Programming Language:** Python
+- **Web Framework:** Flask
 - **Database:** MySQL
-- **Frontend:** HTML/CSS (for now)
+  - Features used: Roles, Stored Procedures, Triggers, JSON support
+  - Character set: UTF8MB4 with unicode collation
+- **Frontend:** HTML, CSS (vanilla, no JS framework for MVP)
+- **Testing:** manual SQL testing
+- **Dependencies Management:** pip, requirements.txt
+
+### 5.2 Python Dependencies
+- `Flask` - Web framework
+- `mysql-connector-python` - Database connectivity
+- `faker` - Test data generation
+- `python-dotenv` - Environment variable management (optional)
+
+### 5.3 Development Tools
+- **Make** - Build automation (Makefile)
+- **MySQL CLI** - Database management
+- **Git** - Version control
+- **VS Code** - Development environment
 
 ## 6. Security & Compliance
-- Passwords: encrypted (never plaintext); profile photos stored as file paths (default image when NULL).
-- **MySQL roles** with least-privilege grants; `plus_member` inherits from `member`
-- **Audit logging** via DB triggers (append-only with `seq_no`, `after_json`)
-- Parameterized queries only
+
+### 6.1 Authentication
+- **Password Storage:** Passwords are hashed using secure algorithms (stored in `USER.password_hash`)
+- **Password Policy:** Never stored in plaintext; algorithm tracked in `USER.password_algo`
+- **Password Updates:** Timestamp tracked in `USER.password_updated_at`
+- **Last Login:** Tracked for security monitoring in `USER.last_login_at`
+
+### 6.2 Authorization (RBAC)
+**Role Hierarchy and Inheritance:**
+```
+r_super_admin (global admin, ALL PRIVILEGES)
+    └── r_admin_gym (gym-scoped admin, full gym access)
+          ├── r_manager (session publishing, equipment, reporting)
+          │     ├── r_front_desk (check-ins, card management)
+          │     └── r_floor_manager (equipment maintenance)
+          └── r_trainer (availability, roster views)
+r_member (basic access, profile viewing)
+    └── r_plus_member (inherits r_member, adds booking permissions)
+```
+
+**Grant Strategy:**
+- Least privilege: roles only have access to necessary tables/views/procedures
+- Inheritance: `r_plus_member` inherits from `r_member` via MySQL role inheritance
+- Separation of concerns: Each role has distinct permissions
+- Super admin: Can grant/revoke roles and has ALL PRIVILEGES
+
+### 6.3 SQL Injection Prevention
+- **Parameterized Queries:** All SQL queries use parameter binding
+- **Stored Procedures:** Business logic encapsulated in procedures with parameters
+- **Input Validation:** Application layer validates all user inputs
+- **Dynamic SQL:** Minimized; when used, inputs are sanitized
+
+### 6.4 Data Protection
+- **PII Handling:** User passwords, emails, photos protected
+- **Profile Photos:** Stored as file paths (not BLOBs) for performance; default image when NULL
+- **Encryption:** Passwords hashed; photos optionally encrypted in production
+
+### 6.5 Audit & Compliance
+- **Immutable Audit Trail:** All `*_AUD` tables are append-only (no UPDATE/DELETE allowed)
+- **Audit Fields:** Every audit record contains:
+  - `seq_no` - Sequential ordering
+  - `occurred_at` - Precise timestamp
+  - `action` - Operation type (insert/update/delete)
+  - `after_json` - Complete state snapshot (JSON)
+  - `actor_user_id` - Who performed the action
+- **Audit Triggers:** Database triggers automatically write audit records
+- **Compliance:** Audit trail enables regulatory compliance and forensic analysis
+
+### 6.6 Network Security
+- **Connection Encryption:** TLS for production (optionally enabled via MySQL SSL)
+- **Access Control:** MySQL users restricted by host (@'%' for flexibility, can be @'localhost' for security)
+- **Default Passwords:** Changed from defaults in production
+
+### 6.7 Data Integrity
+- **Referential Integrity:** Foreign keys enforce relationships
+- **Check Constraints:** Column-level validation (status codes, date ranges)
+- **Trigger-Based Validation:** Business rules enforced via triggers
+- **Transaction Isolation:** ACID properties maintained via MySQL transactions
 
 ## 7. Performance Considerations
-- Provide `build.sql` and seed data
-- Capture EXPLAIN/ANALYZE for: session listing, booking insert path, utilization/equipment views
-- Paginate audit and reports
 
-## 8. Risks & Mitigations
+### 7.1 Database Performance
+- **Indexing Strategy:** 
+  - Foreign keys automatically indexed in MySQL
+  - Unique constraints indexed (`(member_id, session_id)`, `(card_uid)`)
+  - Composite indexes for common queries (e.g., `(gym_id, starts_at)`)
+  - Covering indexes for audit tables `(base_entity_id, seq_no)`
+- **Query Optimization:**
+  - Stored procedures reduce network round-trips
+  - Views denormalize data for reporting queries
+  - EXPLAIN/ANALYZE used to optimize query plans
+- **Partitioning:** Not needed for MVP but can partition audit tables by date in production
+- **Connection Pooling:** Flask application uses connection pooling for efficiency
+
+### 7.2 Application Performance
+- **Pagination:** Large result sets (bookings, check-ins, audit logs) are paginated
+- **Caching Strategy:** 
+  - Static assets (CSS, images) cached
+  - Session data cached in Flask session
+  - Views cached at database level
+- **Target Response Times:**
+  - Simple queries (< 500ms)
+  - Complex reports (< 3s)
+  - Booking transactions (< 1s)
+
+### 7.3 Performance Testing
+- Test with datasets: tiny (10 members), small (100), medium (1,000), large (10,000), huge (100,000)
+- Measure: booking transaction time, session listing, utilization reports
+- Document EXPLAIN/ANALYZE outputs for critical queries
+
+## 8. Scalability Considerations
+
+### 8.1 Current Scale (MVP)
+- **Gym Count:** 1 (expandable to many)
+- **Concurrent Users:** < 100
+- **Data Volume:** 10,000-100,000 members feasible with proper indexing
+
+### 8.3 Vertical Scaling
+- **MySQL Configuration:** Buffer pool sizing, query cache (if applicable)
+- **Server Resources:** CPU, RAM, SSD storage
+- **Connection Limits:** Configure max_connections appropriately
+
+### 8.4 Multi-Tenancy Support
+- **Schema Design:** Already supports multiple gyms via `gym_id`
+- **Data Isolation:** Gym-scoped admins ensure isolation
+- **Future:** Could implement separate databases per gym if needed
+
+### 8.5 Future Growth Considerations
+- **Archival Strategy:** Archive old audit logs (> 2 years) to cold storage
+- **Lazy Evaluation:** Defer heavy calculations until needed
+- **Async Processing:** Background jobs for reporting generation
+- **CDN:** Serve static assets via CDN in production
+
+## 9. Risks & Mitigations
 - **Overbooking or equipment conflicts** → DB constraints + transaction checks
 - **RBAC misconfiguration** → explicit role grants
 - **ERD conflicts** → ERD reviews
 - **Scope considerations** → enforce MVP
 
-## 9. Testing Strategy
+## 10. Testing Strategy
 - **Unit tests:** booking constraints, session publish logic, RBAC decorators
 - **Integration tests:** transaction rollbacks on forced failures; seed users/roles
 - **SQL tests:** views return expected utilization/equipment demand
 
-## 10. Deployment & Monitoring
+## 11. Deployment & Monitoring
 - **Runtime logging:** audit stored in DB as JSON snapshots
 - **Metrics:** latency, error rates, booking success/failure counts
 - **Backups:** DB snapshots/backups

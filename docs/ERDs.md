@@ -1,20 +1,55 @@
 # Entity Relationship Diagrams (ERDs)
 
+## 1. Document Control
+- **Version:**  2.0
+- **Author:**  Henry Huerta
+- **Date:**  2025-10-29
+- **Reviewers:**  Prof. Arnold Lau, T.A. Sneh Bhandari
+
 This document expands the high-level ERD from the TDD into digestible domain diagrams with attributes and notes.
 
+## 2. Notation Legend
+
+This ERD uses **Crow's Foot notation** (also known as IE notation):
+
+### Cardinality Symbols
+- `||--||` : One-to-one (each entity has exactly one related entity)
+- `||--o|` : One-to-many (parent can have zero or many children)
+- `}o--o{` : Many-to-many (requires junction table for implementation)
+
+### Symbols Key
+- **`||`** : Required/mandatory participation (total participation)
+- **`o`** : Optional participation (partial participation)
+- **Direction** : Parent entity is on the left, child entity is on the right
+
+### Attribute Legend
+- **PK** : Primary Key
+- **FK** : Foreign Key
+- **U** : Unique constraint
+- **R** : Required (NOT NULL)
+- Empty : Optional (NULL allowed)
+
+### Normalization Level
+- **Current Normalization:** **Third Normal Form (3NF)**
+- All tables are in 3NF with:
+  - No partial key dependencies
+  - No transitive dependencies
+  - Proper foreign key relationships
+- Some strategic denormalization in audit tables (`after_json` field) and reporting views for performance
+
 **Diagrams included**
-1. **Overview (no audit tables, no *_STATUS_IND)**
-2. **Gym & Equipment (+ audits)**
-3. **Staff (+ audits)**
-4. **Classes & Trainer Availability (+ audits)**
-5. **Members, Plans, Bookings & Check-ins (+ audits)**
-6. **Admins (+ audits)**
-7. **Status Indicator Table Structure**
-8. **Audit Table Structure**
+- Overview (no audit tables, no *_STATUS_IND)
+- Gym & Equipment (+ audits)
+- Staff (+ audits)
+- Classes & Trainer Availability (+ audits)
+- Members, Plans, Bookings & Check-ins (+ audits)
+- Admins (+ audits)
+- Status Indicator Table Structure
+- Audit Table Structure
 
 ---
 
-## 1) Overview (no audit or status indicator tables)
+## 3. Overview (no audit or status indicator tables)
 _Same as TDD overview, but **without** audit tables and **without** status indicator tables and **without attributes** for readability._
 
 ```mermaid
@@ -24,7 +59,6 @@ config:
   look: neo
   layout: elk
   elk:
-    mergeEdges: True
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -81,7 +115,7 @@ erDiagram
 
 ---
 
-## 2) Gym & Equipment (+ audits)
+## 4. Gym & Equipment (+ audits)
 _Equipment, items, inventory counts, service logs._
 
 ```mermaid
@@ -91,7 +125,6 @@ config:
   look: neo
   layout: elk
   elk:
-    mergeEdges: True
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -203,7 +236,7 @@ erDiagram
 
 ---
 
-## 3) Staff (+ audits)
+## 5. Staff (+ audits)
 _Users, staff specializations, and floor managers monitoring equipment._
 
 ```mermaid
@@ -213,7 +246,6 @@ config:
   look: neo
   layout: elk
   elk:
-    mergeEdges: True
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -363,7 +395,7 @@ erDiagram
 
 ---
 
-## 4) Classes & Trainer Availability (+ audits)
+## 6. Classes & Trainer Availability (+ audits)
 _Sessions, trainer availability, staffing, and per-session equipment reservations._
 
 ```mermaid
@@ -373,7 +405,6 @@ config:
   look: neo
   layout: elk
   elk:
-    mergeEdges: True
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -469,7 +500,7 @@ erDiagram
 - `SESSION_EQUIP_RESERVATION(session_id, equip_kind_id) UNIQUE`
 ---
 
-## 5) Members, Plans, Bookings & Check-ins (+ audits)
+## 7. Members, Plans, Bookings & Check-ins (+ audits)
 _Memberships, bookings, access cards and check-ins (plus can check-in at any gym; trial/basic tied to home gym)._
 
 ```mermaid
@@ -479,7 +510,6 @@ config:
   look: neo
   layout: elk
   elk:
-    mergeEdges: True
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -639,7 +669,7 @@ erDiagram
 
 ---
 
-## 6) Admins (+ audits)
+## 8. Admins (+ audits)
 _Gym-scoped admins and global super-admins._
 
 ```mermaid
@@ -649,7 +679,6 @@ config:
   look: neo
   layout: elk
   elk:
-    mergeEdges: True
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -704,7 +733,7 @@ erDiagram
 - `GYM(name)`, `GYM(status_id)`
 ---
 
-## 7) Status Indicator Table Structure
+## 9. Status Indicator Table Structure
 _Generic structure for all `*_STATUS_IND` tables (serves as lookup tables)._
 
 ```mermaid
@@ -714,7 +743,6 @@ config:
   look: neo
   layout: elk
   elk:
-    mergeEdges: True
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -757,7 +785,7 @@ erDiagram
 
 ---
 
-## 8) Audit Table Structure
+## 10. Audit Table Structure
 _Generic structure for all `*_AUD` tables._
 
 ```mermaid
@@ -766,7 +794,8 @@ config:
   theme: redux-color
   look: neo
   layout: elk
-  elk: { mergeEdges: True, nodePlacementStrategy: LINEAR_SEGMENTS }
+  elk:
+    nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
     BASE_ENTITY ||--o{ BASE_ENTITY_AUD : audited_by
