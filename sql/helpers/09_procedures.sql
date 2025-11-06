@@ -21,7 +21,6 @@ BEGIN
     DECLARE v_active_status_id BIGINT;
     DECLARE v_plan_tier VARCHAR(32);
     DECLARE v_active_card_status_id BIGINT;
-    DECLARE v_card_uid VARCHAR(128);
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
@@ -90,14 +89,13 @@ BEGIN
     
     SET p_member_id = LAST_INSERT_ID();
     
-    -- generate unique card UID
-    SET v_card_uid = CONCAT('CARD_', LPAD(p_member_id, 8, '0'), '_', UNIX_TIMESTAMP());
-    
-    -- create access card
-    INSERT INTO ACCESS_CARD (member_id, gym_id, card_uid, status_id, issued_at)
-    VALUES (p_member_id, p_home_gym_id, v_card_uid, v_active_card_status_id, NOW());
-    
-    SET p_access_card_id = LAST_INSERT_ID();
+    -- access card is automatically created by trg_member_access_card_auto_create trigger
+    -- retrieve the auto-created access card ID
+    SELECT id INTO p_access_card_id
+    FROM ACCESS_CARD
+    WHERE member_id = p_member_id
+    ORDER BY issued_at DESC
+    LIMIT 1;
     
     SET p_result_message = CONCAT('Account created successfully. User ID: ', p_user_id, 
                                  ', Member ID: ', p_member_id, 

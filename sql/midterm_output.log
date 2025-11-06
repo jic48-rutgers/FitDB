@@ -30,9 +30,9 @@ See sql/helpers/09_procedures.sql for all 3 procedure implementations
 Users_Before
 1016
 User_ID	Member_ID	Card_ID	Message
-NULL	NULL	NULL	NULL
+1017	1001	801	Account created successfully. User ID: 1017, Member ID: 1001, Access Card ID: 801
 Users_After
-1016
+1017
 
 
 
@@ -42,9 +42,35 @@ See sql/helpers/08_views.sql for all 7 view implementations
 
 
 
-5. EXPLAIN
+5. QUERY PERFORMANCE WITH EXPLAIN
+Test
+STAGE 1: No indexes (baseline)
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	NULL	NULL	NULL	NULL	NULL	NULL	NULL	NULL	NULL	no matching row in const table
+1	SIMPLE	u	NULL	ALL	NULL	NULL	NULL	NULL	1016	33.33	Using where; Using filesort
+Finding
+STAGE 1 Results: type=ALL, rows=1016 - must scan all 1016 users and sort in memory (expensive)
+Test
+STAGE 2: Single-column index on last_login_at
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	u	NULL	range	idx_user_last_login	idx_user_last_login	9	NULL	820	100.00	Using index condition; Backward index scan
+Finding
+STAGE 2 Results: type=range, rows=820, key=idx_user_last_login (BETTER) - index eliminates filesort, only examines ~820 recent logins
+Test
+STAGE 3: Composite index (last_login_at, status_id)
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	u	NULL	range	idx_user_status,idx_user_login_status	idx_user_login_status	17	NULL	820	85.04	Using index condition; Backward index scan
+Finding
+STAGE 3 Results: type=range, rows=820, filtered=85%, key=idx_user_login_status (BEST) - composite index filters BOTH columns: 820 rows * 85% = ~697 actual rows - without composite index, would need to check status_id on all 820 rows
+
+Performance Gains:
+Summary
+  Stage 1: Scans 1016 rows + expensive sort operation
+Summary
+  Stage 2: Scans 820 rows + no sort (eliminates filesort)
+Summary
+  Stage 3: Scans 820 but filters to ~697 rows efficiently
+Summary
+  Improvement: ~40% fewer rows examined in Stage 3 vs Stage 2
 
 
 
@@ -69,74 +95,8 @@ CHECK_IN_AUD
 CLASS_SESSION_AUD
 Status
 Audit records BEFORE email update:
+seq_no	action	occurred_at
+1017	insert	2025-11-05 20:27:20.727547
 Status
 Performing UPDATE to generate audit record:
-Status
-Audit records AFTER email update:
-
-
-
-8. CASCADING DELETES
-
-------------------------------------------------------------
-Status
-CASCADE rules defined (child records auto-deleted):
-TABLE_NAME	REFERENCED_TABLE_NAME	DELETE_RULE
-ADMIN	STAFF	CASCADE
-FLOOR_MANAGER	STAFF	CASCADE
-FRONT_DESK	STAFF	CASCADE
-MANAGER	STAFF	CASCADE
-SESSION_EQUIP_RESERVATION	CLASS_SESSION	CASCADE
-Status
-RESTRICT rules defined (prevents delete if children exist):
-TABLE_NAME	REFERENCED_TABLE_NAME	DELETE_RULE
-BOOKING	MEMBER	RESTRICT
-BOOKING	CLASS_SESSION	RESTRICT
-SERVICE_LOG	EQUIPMENT_ITEM	RESTRICT
-SESSION_TRAINER	TRAINER	RESTRICT
-
-
-
-9. TRANSACTION MANAGEMENT AND ROLLBACK
-
-------------------------------------------------------------
-Status
-Testing successful transaction with COMMIT:
-Plans_Before
-18
-Plans_After
-19
-Result
-COMMIT successful - count increased
-Status
-Testing failed transaction with ROLLBACK:
-Users_Before
-1016
-Users_After
-1016
-Result
-ROLLBACK successful - count unchanged
-
-
-
-10. CONSTRAINTS & TRIGGERS
-Reference
-See sql/helpers/03_core_tables.sql for all constraint definitions
-Reference
-See sql/helpers/05_triggers.sql for all trigger implementations
-
-
-
-11. DATA TYPES & NORMALIZATION
-Reference
-See sql/helpers/03_core_tables.sql for data type definitions
-Reference
-See docs/ERDs.md for normalization documentation (3NF)
-Error_Handling_Demo
-NULL
-
-
-
-============================================================================
-
-MIDTERM DEMO DONE!
+ERROR 1048 (23000) at line 139: Column 'email' cannot be null
