@@ -1,10 +1,7 @@
--- 3) Core Tables (22) ----
+-- 3) Core Tables (22)
 
----- 3.1 drop tables ----
-DROP TABLE IF EXISTS SUPER_ADMIN, ADMIN, FRONT_DESK, FLOOR_MANAGER, MANAGER, TRAINER, STAFF, USER;
-
----- 3.2 create tables ----
------- 3.2.1 user table ----
+-- 3.1 create tables
+-- 3.2.1 user table
 CREATE TABLE USER (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(100) NOT NULL UNIQUE,
@@ -20,7 +17,7 @@ CREATE TABLE USER (
   CONSTRAINT fk_user_status FOREIGN KEY (status_id) REFERENCES ACCOUNT_STATUS_IND(id)
 ) ENGINE=InnoDB;
 
------- 3.2.2 staff table ----
+-- 3.2.2 staff table
 CREATE TABLE STAFF (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id BIGINT NOT NULL UNIQUE,
@@ -33,7 +30,7 @@ CREATE TABLE STAFF (
   CONSTRAINT fk_staff_status FOREIGN KEY (status_id) REFERENCES ACCOUNT_STATUS_IND(id)
 ) ENGINE=InnoDB;
 
------- 3.2.3 trainer table ----
+-- 3.2.3 trainer table
 CREATE TABLE TRAINER (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   staff_id BIGINT NOT NULL UNIQUE,
@@ -44,7 +41,7 @@ CREATE TABLE TRAINER (
   CONSTRAINT fk_trainer_staff FOREIGN KEY (staff_id) REFERENCES STAFF(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
------- 3.2.4 manager table ----
+-- 3.2.4 manager table
 CREATE TABLE MANAGER (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   staff_id BIGINT NOT NULL UNIQUE,
@@ -54,7 +51,7 @@ CREATE TABLE MANAGER (
   CONSTRAINT fk_manager_staff FOREIGN KEY (staff_id) REFERENCES STAFF(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
------- 3.2.5 floor manager table ----
+-- 3.2.5 floor manager table
 CREATE TABLE FLOOR_MANAGER (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   staff_id BIGINT NOT NULL UNIQUE,
@@ -64,7 +61,7 @@ CREATE TABLE FLOOR_MANAGER (
   CONSTRAINT fk_fmgr_staff FOREIGN KEY (staff_id) REFERENCES STAFF(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
------- 3.2.6 front desk table ----
+-- 3.2.6 front desk table
 CREATE TABLE FRONT_DESK (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   staff_id BIGINT NOT NULL UNIQUE,
@@ -74,7 +71,7 @@ CREATE TABLE FRONT_DESK (
   CONSTRAINT fk_frontdesk_staff FOREIGN KEY (staff_id) REFERENCES STAFF(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
------- 3.2.7 admin table ----
+-- 3.2.7 admin table
 CREATE TABLE ADMIN (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   staff_id BIGINT NOT NULL UNIQUE,
@@ -84,7 +81,7 @@ CREATE TABLE ADMIN (
   CONSTRAINT fk_admin_staff FOREIGN KEY (staff_id) REFERENCES STAFF(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
------- 3.2.8 super admin table ----
+-- 3.2.8 super admin table
 CREATE TABLE SUPER_ADMIN (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id BIGINT NOT NULL UNIQUE,
@@ -94,10 +91,9 @@ CREATE TABLE SUPER_ADMIN (
   CONSTRAINT fk_superadmin_user FOREIGN KEY (user_id) REFERENCES USER(id)
 ) ENGINE=InnoDB;
 
----- 3.3 gyms & equipment ----
-DROP TABLE IF EXISTS SERVICE_LOG, INVENTORY_COUNT, EQUIPMENT_ITEM, EQUIP_KIND, GYM;
+-- 3.3 gyms & equipment
 
------- 3.3.1 gym table ----
+-- 3.3.1 gym table
 CREATE TABLE GYM (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
@@ -108,7 +104,7 @@ CREATE TABLE GYM (
   CONSTRAINT fk_gym_status FOREIGN KEY (status_id) REFERENCES GYM_STATUS_IND(id)
 ) ENGINE=InnoDB;
 
------- 3.3.2 equip kind table ----
+-- 3.3.2 equip kind table
 CREATE TABLE EQUIP_KIND (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL UNIQUE,
@@ -117,7 +113,7 @@ CREATE TABLE EQUIP_KIND (
   updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
 ) ENGINE=InnoDB;
 
------- 3.3.3 equipment item table ----
+-- 3.3.3 equipment item table
 CREATE TABLE EQUIPMENT_ITEM (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   gym_id BIGINT NOT NULL,
@@ -141,7 +137,7 @@ CREATE TABLE EQUIPMENT_ITEM (
   UNIQUE KEY uk_eitem_serial_per_gym (gym_id, serial_no)
 ) ENGINE=InnoDB;
 
------- 3.3.4 inventory count table ----
+-- 3.3.4 inventory count table
 CREATE TABLE INVENTORY_COUNT (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   gym_id BIGINT NOT NULL,
@@ -158,7 +154,7 @@ CREATE TABLE INVENTORY_COUNT (
   CHECK (qty_on_floor >= 0 AND qty_in_storage >= 0)
 ) ENGINE=InnoDB;
 
------- 3.3.5 service log table ----
+-- 3.3.5 service log table
 CREATE TABLE SERVICE_LOG (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   equipment_item_id BIGINT NOT NULL,
@@ -172,10 +168,9 @@ CREATE TABLE SERVICE_LOG (
   CONSTRAINT fk_slog_staff FOREIGN KEY (staff_id) REFERENCES STAFF(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
----- 3.4 classes & availability ----
-DROP TABLE IF EXISTS SESSION_EQUIP_RESERVATION, SESSION_TRAINER, TRAINER_AVAIL_DATE, CLASS_SESSION;
+-- 3.4 classes & availability
 
------- 3.4.1 class session table ----
+-- 3.4.1 class session table
 CREATE TABLE CLASS_SESSION (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   gym_id BIGINT NOT NULL,
@@ -194,7 +189,7 @@ CREATE TABLE CLASS_SESSION (
   CHECK (ends_at > starts_at)
 ) ENGINE=InnoDB;
 
------- 3.4.2 trainer avail date table ----
+-- 3.4.2 trainer avail date table
 CREATE TABLE TRAINER_AVAIL_DATE (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   trainer_id BIGINT NOT NULL,
@@ -210,7 +205,7 @@ CREATE TABLE TRAINER_AVAIL_DATE (
   UNIQUE KEY uk_tavail_trainer_date_period (trainer_id, for_date, period)
 ) ENGINE=InnoDB;
 
------- 3.4.3 session trainer table ----
+-- 3.4.3 session trainer table
 CREATE TABLE SESSION_TRAINER (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   session_id BIGINT NOT NULL,
@@ -224,7 +219,7 @@ CREATE TABLE SESSION_TRAINER (
   CONSTRAINT fk_strainer_trainer FOREIGN KEY (trainer_id) REFERENCES TRAINER(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
------- 3.4.4 session equip reservation table ----
+-- 3.4.4 session equip reservation table
 CREATE TABLE SESSION_EQUIP_RESERVATION (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   session_id BIGINT NOT NULL,
@@ -237,10 +232,9 @@ CREATE TABLE SESSION_EQUIP_RESERVATION (
   CONSTRAINT fk_sereq_kind FOREIGN KEY (equip_kind_id) REFERENCES EQUIP_KIND(id)
 ) ENGINE=InnoDB;
 
----- 3.5 memberships, cards & check-ins ----
-DROP TABLE IF EXISTS CHECK_IN, ACCESS_CARD, BOOKING, MEMBER, MEMBERSHIP_PLAN;
+-- 3.5 memberships, cards & check-ins
 
------- 3.5.1 membership plan table ----
+-- 3.5.1 membership plan table
 CREATE TABLE MEMBERSHIP_PLAN (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL UNIQUE,
@@ -253,7 +247,7 @@ CREATE TABLE MEMBERSHIP_PLAN (
   CONSTRAINT fk_mplan_status FOREIGN KEY (status_id) REFERENCES PLAN_STATUS_IND(id)
 ) ENGINE=InnoDB;
 
------- 3.5.2 member table ----
+-- 3.5.2 member table
 CREATE TABLE MEMBER (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id BIGINT NOT NULL UNIQUE,
@@ -270,7 +264,7 @@ CREATE TABLE MEMBER (
   CONSTRAINT fk_member_home_gym FOREIGN KEY (home_gym_id) REFERENCES GYM(id)
 ) ENGINE=InnoDB;
 
------- 3.5.3 booking table ----
+-- 3.5.3 booking table
 CREATE TABLE BOOKING (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   session_id BIGINT NOT NULL,
@@ -287,7 +281,7 @@ CREATE TABLE BOOKING (
   CONSTRAINT fk_booking_status  FOREIGN KEY (status_id)  REFERENCES BOOKING_STATUS_IND(id)
 ) ENGINE=InnoDB;
 
------- 3.5.4 access card table ----
+-- 3.5.4 access card table
 CREATE TABLE ACCESS_CARD (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   member_id BIGINT NOT NULL,
@@ -303,7 +297,7 @@ CREATE TABLE ACCESS_CARD (
   CONSTRAINT fk_card_status FOREIGN KEY (status_id) REFERENCES ACCESS_CARD_STATUS_IND(id)
 ) ENGINE=InnoDB;
 
------- 3.5.5 check in table ----
+-- 3.5.5 check in table
 CREATE TABLE CHECK_IN (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   member_id BIGINT NOT NULL,

@@ -1,9 +1,9 @@
 # Architectural Diagram
 
 ## 1. Document Control
-- **Version:**  2.0
+- **Version:**  2.1
 - **Author:**  Henry Huerta
-- **Date:**  2025-10-29
+- **Date:**  2025-11-3
 - **Reviewers:**  Prof. Arnold Lau, T.A. Sneh Bhandari
 
 ## 2. Overview
@@ -42,12 +42,24 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 
 ## 3. Context Diagram
 **Actors → System:**
-| Actor                | Portal/View                   | Capabilities                                                                                  |
-|----------------------|------------------------------|----------------------------------------------------------------------------------------------|
-| Member / Plus Member | Member portal                | - See personal information<br>- Book classes / View bookings (plus only)                     |
-| Trainer              | Trainer portal               | - View class rosters<br>- (Provide availability to manager — possibly added later)           |
-| Manager              | Manager console              | - Manage equipment inventory / allocations<br>- Override class rosters<br>- Ban members      |
-| Admin                | Admin console                | - Global configuration<br>- Auditing                                                         |
+Actors and their primary views/capabilities:
+
+- Member / Plus Member (via Member portal):
+  - See personal information
+  - Book classes / View bookings (plus only)
+
+- Trainer (via Trainer portal):
+  - View class rosters
+  - (Provide availability to manager — possibly added later)
+
+- Manager (via Manager console):
+  - Manage equipment inventory / allocations
+  - Override class rosters
+  - Ban members
+
+- Admin (via Admin console):
+  - Global configuration
+  - Auditing
 
 **External systems (possibly added later):**
 - AWS integrations
@@ -141,3 +153,16 @@ FitDB is a small, well-structured Flask + MySQL system emphasizing database desi
 
 ### 7.3 Build & Performance
 - use **EXPLAIN/ANALYZE** to show query plans.
+
+---
+
+## 8. Development Configuration
+
+### 8.1 Database Accounts
+The build script (`sql/build.sql`) creates two database users:
+- **`fitdb_admin`@'%'** (password: `change-me-admin`): Admin account for development with full privileges
+- **`fitdb_app`@'%'** (password: `change-me`): Application account for Flask app database access
+
+### 8.2 Configuration Management
+- **MVP:** Database configuration via command-line arguments or environment variables
+- **Post-MVP:** `.env` file support will be added for easier local development configuration

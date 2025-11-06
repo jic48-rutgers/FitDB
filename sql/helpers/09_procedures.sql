@@ -1,9 +1,9 @@
--- 9) Stored Procedures ----
+-- 9) Stored Procedures
 
 DELIMITER $$
 
----- 9.1 create user account procedure ----
----- procedure to create a new user account with member record and access card
+-- 9.1 create user account procedure
+-- procedure to create a new user account with member record and access card
 CREATE PROCEDURE sp_create_user_account(
     IN p_username VARCHAR(100),
     IN p_email VARCHAR(255),
@@ -34,19 +34,19 @@ BEGIN
     
     START TRANSACTION;
     
-    -- Get active status ID
+    -- get active status ID
     SELECT id INTO v_active_status_id FROM ACCOUNT_STATUS_IND WHERE code = 'ACTIVE';
     IF v_active_status_id IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Active status not found';
     END IF;
     
-    -- Get active card status ID
+    -- get active card status ID
     SELECT id INTO v_active_card_status_id FROM ACCESS_CARD_STATUS_IND WHERE code = 'ACTIVE';
     IF v_active_card_status_id IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Active card status not found';
     END IF;
     
-    -- Validate membership plan exists and is active
+    -- validate membership plan exists and is active
     SELECT tier INTO v_plan_tier FROM MEMBERSHIP_PLAN mp
     JOIN PLAN_STATUS_IND psi ON mp.status_id = psi.id
     WHERE mp.id = p_membership_plan_id AND psi.code = 'ACTIVE';
@@ -55,12 +55,12 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid or inactive membership plan';
     END IF;
     
-    -- Validate home gym for trial/basic plans
+    -- validate home gym for trial/basic plans
     IF v_plan_tier IN ('trial', 'basic') AND p_home_gym_id IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Home gym required for trial and basic plans';
     END IF;
     
-    -- Validate gym exists and is active
+    -- validate gym exists and is active
     IF p_home_gym_id IS NOT NULL THEN
         IF NOT EXISTS (
             SELECT 1 FROM GYM g 
@@ -71,13 +71,13 @@ BEGIN
         END IF;
     END IF;
     
-    -- Create user account
+    -- create user account
     INSERT INTO USER (username, email, password_hash, password_algo, status_id, profile_photo_path)
     VALUES (p_username, p_email, p_password_hash, p_password_algo, v_active_status_id, NULL);
     
     SET p_user_id = LAST_INSERT_ID();
     
-    -- Create member record
+    -- create member record
     INSERT INTO MEMBER (user_id, membership_plan_id, home_gym_id, joined_on, trial_expires_on, status_id)
     VALUES (
         p_user_id, 
@@ -90,10 +90,10 @@ BEGIN
     
     SET p_member_id = LAST_INSERT_ID();
     
-    -- Generate unique card UID
+    -- generate unique card UID
     SET v_card_uid = CONCAT('CARD_', LPAD(p_member_id, 8, '0'), '_', UNIX_TIMESTAMP());
     
-    -- Create access card
+    -- create access card
     INSERT INTO ACCESS_CARD (member_id, gym_id, card_uid, status_id, issued_at)
     VALUES (p_member_id, p_home_gym_id, v_card_uid, v_active_card_status_id, NOW());
     
@@ -106,8 +106,8 @@ BEGIN
     COMMIT;
 END$$
 
----- 9.2 front desk create user account procedure ----
----- procedure for front desk staff to create accounts for others
+-- 9.2 front desk create user account procedure
+-- procedure for front desk staff to create accounts for others
 CREATE PROCEDURE sp_front_desk_create_user_account(
     IN p_username VARCHAR(100),
     IN p_email VARCHAR(255),
@@ -133,7 +133,7 @@ BEGIN
         SET p_access_card_id = NULL;
     END;
     
-    -- Validate that the staff member has front desk privileges
+    -- validate that the staff member has front desk privileges
     SELECT COUNT(*) > 0 INTO v_staff_exists
     FROM FRONT_DESK fd
     JOIN STAFF s ON fd.staff_id = s.id
@@ -146,14 +146,14 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Unauthorized: Staff member does not have front desk privileges';
     END IF;
     
-    -- Call the main account creation procedure
+    -- call the main account creation procedure
     CALL CreateUserAccount(p_username, p_email, p_password_hash, p_password_algo, 
                           p_membership_plan_id, p_home_gym_id, p_staff_user_id,
                           p_user_id, p_member_id, p_access_card_id, p_result_message);
 END$$
 
----- 9.3 get user account info procedure ----
----- procedure to get user account information with member details and access card
+-- 9.3 get user account info procedure
+-- procedure to get user account information with member details and access card
 CREATE PROCEDURE sp_get_user_account_info(
     IN p_user_id BIGINT
 )

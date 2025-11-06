@@ -1,0 +1,142 @@
+mysql: [Warning] Using a password on the command line interface can be insecure.
+
+============================================================================
+
+FITDB MIDTERM DEMO
+
+============================================================================
+
+
+
+1. DATABASE OBJECTS
+Reference
+See sql/helpers/03_core_tables.sql for all table definitions
+Reference
+See sql/helpers/07_indexes.sql for all index definitions
+
+
+
+2. ACCESS CONTROL
+Reference
+See sql/helpers/01_roles.sql for all 8 role definitions
+Reference
+See sql/helpers/02_users.sql for user and grant definitions
+
+
+
+3. STORED PROCEDURES
+Reference
+See sql/helpers/09_procedures.sql for all 3 procedure implementations
+Users_Before
+1016
+User_ID	Member_ID	Card_ID	Message
+NULL	NULL	NULL	NULL
+Users_After
+1016
+
+
+
+4. VIEWS
+Reference
+See sql/helpers/08_views.sql for all 7 view implementations
+
+
+
+5. EXPLAIN
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	NULL	NULL	NULL	NULL	NULL	NULL	NULL	NULL	NULL	no matching row in const table
+
+
+
+6. DATA INITIALIZATION
+Reference
+See data/generate_seed.py for seed data generation script
+Reference
+See sql/bulkcopy.sql for bulk loading implementation
+
+
+
+7. AUDIT STRATEGY
+
+------------------------------------------------------------
+Status
+Audit tables created:
+TABLE_NAME
+ACCESS_CARD_AUD
+ADMIN_AUD
+BOOKING_AUD
+CHECK_IN_AUD
+CLASS_SESSION_AUD
+Status
+Audit records BEFORE email update:
+Status
+Performing UPDATE to generate audit record:
+Status
+Audit records AFTER email update:
+
+
+
+8. CASCADING DELETES
+
+------------------------------------------------------------
+Status
+CASCADE rules defined (child records auto-deleted):
+TABLE_NAME	REFERENCED_TABLE_NAME	DELETE_RULE
+ADMIN	STAFF	CASCADE
+FLOOR_MANAGER	STAFF	CASCADE
+FRONT_DESK	STAFF	CASCADE
+MANAGER	STAFF	CASCADE
+SESSION_EQUIP_RESERVATION	CLASS_SESSION	CASCADE
+Status
+RESTRICT rules defined (prevents delete if children exist):
+TABLE_NAME	REFERENCED_TABLE_NAME	DELETE_RULE
+BOOKING	MEMBER	RESTRICT
+BOOKING	CLASS_SESSION	RESTRICT
+SERVICE_LOG	EQUIPMENT_ITEM	RESTRICT
+SESSION_TRAINER	TRAINER	RESTRICT
+
+
+
+9. TRANSACTION MANAGEMENT AND ROLLBACK
+
+------------------------------------------------------------
+Status
+Testing successful transaction with COMMIT:
+Plans_Before
+18
+Plans_After
+19
+Result
+COMMIT successful - count increased
+Status
+Testing failed transaction with ROLLBACK:
+Users_Before
+1016
+Users_After
+1016
+Result
+ROLLBACK successful - count unchanged
+
+
+
+10. CONSTRAINTS & TRIGGERS
+Reference
+See sql/helpers/03_core_tables.sql for all constraint definitions
+Reference
+See sql/helpers/05_triggers.sql for all trigger implementations
+
+
+
+11. DATA TYPES & NORMALIZATION
+Reference
+See sql/helpers/03_core_tables.sql for data type definitions
+Reference
+See docs/ERDs.md for normalization documentation (3NF)
+Error_Handling_Demo
+NULL
+
+
+
+============================================================================
+
+MIDTERM DEMO DONE!

@@ -1,0 +1,52 @@
+name,mode
+Treadmill,per_item
+Elliptical,per_item
+Stationary Bike,per_item
+Rowing Machine,per_item
+Bench Press,per_item
+Squat Rack,per_item
+Smith Machine,per_item
+Cable Machine,per_item
+Leg Press,per_item
+Lat Pulldown,per_item
+Dumbbells,bulk
+Kettlebells,bulk
+Resistance Bands,bulk
+Yoga Mats,bulk
+Medicine Balls,bulk
+Foam Rollers,bulk
+Jump Ropes,bulk
+Exercise Balls,bulk
+Battle Ropes,per_item
+Pull-up Bar,per_item
+Dip Station,per_item
+Leg Extension Machine,per_item
+Leg Curl Machine,per_item
+Chest Fly Machine,per_item
+Shoulder Press Machine,per_item
+Seated Row Machine,per_item
+Hack Squat Machine,per_item
+Preacher Curl Bench,per_item
+Roman Chair,per_item
+TRX Suspension Trainer,bulk
+Plyometric Box,bulk
+Barbell,bulk
+EZ Curl Bar,bulk
+Weight Plates,bulk
+Step Platform,bulk
+Spin Bike,per_item
+Assault Bike,per_item
+StairMaster,per_item
+Ski Erg,per_item
+Sled,bulk
+Climbing Wall,per_item
+Boxing Bag,per_item
+Speed Bag,per_item
+Boxing Gloves,bulk
+Punching Mitts,bulk
+Agility Ladder,bulk
+Cones,bulk
+Balance Board,bulk
+Ab Wheel,bulk
+Weighted Vest,bulk
+

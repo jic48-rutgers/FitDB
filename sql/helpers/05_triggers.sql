@@ -1,9 +1,10 @@
--- 5) Triggers ----
+-- 5) Triggers
 
 DELIMITER $$
 
----- 5.1 member access card auto create ----
----- automatically generates access card when new member is added
+-- 5.1 member access card auto create
+-- automatically generates access card when new member is added
+-- can be disabled by setting @DISABLE_AUTO_TRIGGERS = 1 (used during bulk loading)
 CREATE TRIGGER trg_member_access_card_auto_create
 AFTER INSERT ON MEMBER
 FOR EACH ROW
@@ -11,19 +12,22 @@ BEGIN
     DECLARE v_active_card_status_id BIGINT;
     DECLARE v_card_uid VARCHAR(128);
     
-    -- get active card status ID
-    SELECT id INTO v_active_card_status_id FROM ACCESS_CARD_STATUS_IND WHERE code = 'ACTIVE';
-    
-    -- generate unique card UID
-    SET v_card_uid = CONCAT('CARD_', LPAD(NEW.id, 8, '0'), '_', UNIX_TIMESTAMP());
-    
-    -- create access card automatically
-    INSERT INTO ACCESS_CARD (member_id, gym_id, card_uid, status_id, issued_at)
-    VALUES (NEW.id, NEW.home_gym_id, v_card_uid, v_active_card_status_id, NOW());
+    -- skip trigger execution if bulk loading
+    IF @DISABLE_AUTO_TRIGGERS IS NULL OR @DISABLE_AUTO_TRIGGERS = 0 THEN
+        -- get active card status ID
+        SELECT id INTO v_active_card_status_id FROM ACCESS_CARD_STATUS_IND WHERE code = 'ACTIVE';
+        
+        -- generate unique card UID
+        SET v_card_uid = CONCAT('CARD_', LPAD(NEW.id, 8, '0'), '_', UNIX_TIMESTAMP());
+        
+        -- create access card automatically
+        INSERT INTO ACCESS_CARD (member_id, gym_id, card_uid, status_id, issued_at)
+        VALUES (NEW.id, NEW.home_gym_id, v_card_uid, v_active_card_status_id, NOW());
+    END IF;
 END$$
 
----- 5.2 member access card unique ----
----- prevents duplicate active access cards per member
+-- 5.2 member access card unique
+-- prevents duplicate active access cards per member
 CREATE TRIGGER trg_member_access_card_unique
 BEFORE INSERT ON ACCESS_CARD
 FOR EACH ROW
@@ -42,8 +46,8 @@ BEGIN
     END IF;
 END$$
 
----- 5.3 user password updated ----
-----updates timestamp when password is changed
+-- 5.3 user password updated
+-- updates timestamp when password is changed
 CREATE TRIGGER trg_user_password_updated
 BEFORE UPDATE ON USER
 FOR EACH ROW
@@ -53,8 +57,8 @@ BEGIN
     END IF;
 END$$
 
----- 5.4 user deletion guard ----
----- prevents deletion of users with active memberships or staff roles
+-- 5.4 user deletion guard
+-- prevents deletion of users with active memberships or staff roles
 CREATE TRIGGER trg_user_deletion_guard
 BEFORE DELETE ON USER
 FOR EACH ROW
@@ -80,8 +84,8 @@ BEGIN
     END IF;
 END$$
 
----- 5.5 member status user consistency ----
----- ensures member status aligns with user status
+-- 5.5 member status user consistency
+-- ensures member status aligns with user status
 CREATE TRIGGER trg_member_status_user_consistency
 BEFORE UPDATE ON MEMBER
 FOR EACH ROW
@@ -102,8 +106,8 @@ BEGIN
     END IF;
 END$$
 
----- 5.6 check-in validation ----
-----validates access card status and gym access permissions
+-- 5.6 check-in validation
+-- validates access card status and gym access permissions
 CREATE TRIGGER trg_checkin_validation
 BEFORE INSERT ON CHECK_IN
 FOR EACH ROW
@@ -156,8 +160,8 @@ BEGIN
     END IF;
 END$$
 
----- 5.7 user login update ----
----- maintains last login timestamp consistency
+-- 5.7 user login update
+-- maintains last login timestamp consistency
 CREATE TRIGGER trg_user_login_update
 BEFORE UPDATE ON USER
 FOR EACH ROW
@@ -168,8 +172,8 @@ BEGIN
     END IF;
 END$$
 
----- 5.8 booking plus only ----
----- restricts session booking to plus tier members
+-- 5.8 booking plus only --
+-- restricts session booking to plus tier members
 CREATE TRIGGER trg_booking_plus_only
 BEFORE INSERT ON BOOKING
 FOR EACH ROW

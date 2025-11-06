@@ -1,9 +1,9 @@
 # Project Contributors & Collaboration
 
 ## 1. Document Control
-- **Version:**  2.0
+- **Version:**  2.1
 - **Author:**  Henry Huerta
-- **Date:**  2025-10-29
+- **Date:**  2025-11-3
 - **Reviewers:**  Prof. Arnold Lau, T.A. Sneh Bhandari
 
 Welcome to FitDB (CS-437). This document outlines who's involved, what the project is about, and how we'll collaborate. It reflects the current scope in the docs folder.
@@ -15,8 +15,9 @@ Welcome to FitDB (CS-437). This document outlines who's involved, what the proje
 | Name            | GitHub Handle   | Role(s)                                                | Email / Contact        |
 |-----------------|-----------------|--------------------------------------------------------|------------------------|
 | Henry    | @hah97      | Project Leader · Full Stack Developer       | tbd            |
+| Jared    | @jic48      | Project Leader · Full Stack Developer       | tbd            |
 | Prof. Lou       | @tbd               | Course Instructor                         | tbd                      |
-| You            | [Your GitHub ID]| Contributor                                            | [Your Contact Info]    |
+| You            | [GitHub ID]| Contributor                                            | [Your Contact Info]    |
 
 ---
 
@@ -33,14 +34,6 @@ Welcome to FitDB (CS-437). This document outlines who's involved, what the proje
 
 ## 4. Topics of Interest
 
-This project explores or relies on the following areas (see `docs` folder for context):
-
-- Gym membership lifecycle (registration, activation/deactivation, check-ins)
-- Role-based access control (member, plus_member, trainer, manager, admin) at app and DB layers
-- Class sessions, booking capacity guards, and conflict checks
-- Trainer availability (planned) and manager-driven session publication
-- Issuing strikes and bans to members (as manager or trainer)
-- Equipment inventory and per-session allocation modeling
-- Audit logging (append-only) and security controls
-- Denormalized reporting views (class utilization, equipment demand)
-- Flask + MySQL implementation details - optional AWS deployment
+- Core gym membership management (user registration, member activation/deactivation, check-ins) and access control (RBAC at app and DB levels, audit logging)
+- Class session booking, scheduling, capacity/conflict handling, and equipment allocation (with reporting views and inventory modeling)
+- Flask + MySQL implementation; future extensibility for AWS deployment and advanced features

@@ -1,14 +1,3 @@
-# FitDB Python Dependencies
-
-# Database connectivity
-mysql-connector-python>=8.0.0
-
-# Fake data generation
-Faker>=20.0.0
-
-# Environment variable management (optional but recommended)
-python-dotenv>=1.0.0
-
-# Additional utilities
-# None required for basic functionality
-
+mysql-connector-python
+Faker
+python-dotenv

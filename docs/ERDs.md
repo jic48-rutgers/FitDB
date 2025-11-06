@@ -1,12 +1,14 @@
 # Entity Relationship Diagrams (ERDs)
 
 ## 1. Document Control
-- **Version:**  2.0
+- **Version:**  2.1
 - **Author:**  Henry Huerta
-- **Date:**  2025-10-29
+- **Date:**  2025-11-3
 - **Reviewers:**  Prof. Arnold Lau, T.A. Sneh Bhandari
 
 This document expands the high-level ERD from the TDD into digestible domain diagrams with attributes and notes.
+
+> **MVP Scope Note:** While this document describes the complete database schema supporting all planned features, the MVP focuses exclusively on core account and access card management (USER, MEMBER, ACCESS_CARD, MEMBERSHIP_PLAN, GYM, and related audit/status tables). See [`MVP_SCOPE.md`](./MVP_SCOPE.md) for details on what features are implemented in the current phase versus future phases.
 
 ## 2. Notation Legend
 
@@ -52,6 +54,10 @@ This ERD uses **Crow's Foot notation** (also known as IE notation):
 ## 3. Overview (no audit or status indicator tables)
 _Same as TDD overview, but **without** audit tables and **without** status indicator tables and **without attributes** for readability._
 
+![ERD Diagram 1: Overview](PNGs/ERDs-ERD-1.png)
+
+<!--
+<!--
 ```mermaid
 ---
 config:
@@ -59,6 +65,8 @@ config:
   look: neo
   layout: elk
   elk:
+    algorithm: layered
+    direction: DOWN
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -112,12 +120,17 @@ erDiagram
     GYM             ||--o{ ACCESS_CARD               : issues_card
     ACCESS_CARD     ||--o{ CHECK_IN                  : used_for_check_in
 ```
+-->
+-->
 
 ---
 
 ## 4. Gym & Equipment (+ audits)
 _Equipment, items, inventory counts, service logs._
 
+![ERD Diagram 2: 4. Gym & Equipment](PNGs/ERDs-ERD-2.png)
+
+<!--
 ```mermaid
 ---
 config:
@@ -125,6 +138,8 @@ config:
   look: neo
   layout: elk
   elk:
+    algorithm: layered
+    direction: DOWN
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -204,6 +219,7 @@ erDiagram
         datetime updated_at "R"
     }
 ```
+-->
 
 **Attribute types**
 - **Key:** `GYM.id`, `EQUIP_KIND.id`, `EQUIPMENT_ITEM.id`, `INVENTORY_COUNT.id`, `SERVICE_LOG.id`
@@ -227,7 +243,7 @@ erDiagram
   - Partial unique on `(gym_id, serial_no)` where `serial_no IS NOT NULL` (or full unique if always present)
   - FKs `ON DELETE RESTRICT` for audits; `SERVICE_LOG.equipment_item_id` `ON DELETE RESTRICT`
 
-**Indices**
+**Indexes**
 - `GYM(name)`, `GYM(status_id)`, `GYM(created_at)`
 - `EQUIP_KIND(name) UNIQUE`, `EQUIP_KIND(mode)`
 - `EQUIPMENT_ITEM(gym_id, equip_kind_id)`, `EQUIPMENT_ITEM(status_id)`, `EQUIPMENT_ITEM(next_clean_due_at)`
@@ -239,6 +255,9 @@ erDiagram
 ## 5. Staff (+ audits)
 _Users, staff specializations, and floor managers monitoring equipment._
 
+![ERD Diagram 3: 5. Staff](PNGs/ERDs-ERD-3.png)
+
+<!--
 ```mermaid
 ---
 config:
@@ -246,6 +265,8 @@ config:
   look: neo
   layout: elk
   elk:
+    algorithm: layered
+    direction: DOWN
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -365,6 +386,7 @@ erDiagram
         datetime updated_at "R"
     }
 ```
+-->
 
 **Attribute types**
 - **Key:** `USER.id`, `STAFF.id`, `TRAINER.id`, `MANAGER.id`, `FLOOR_MANAGER.id`, `FRONT_DESK.id`, `ADMIN.id`, `SUPER_ADMIN.id`
@@ -387,7 +409,7 @@ erDiagram
   - Unique `(user_id)` in `STAFF`, unique `(staff_id)` in each specialization table
   - FK `STAFF.user_id -> USER.id` `ON DELETE RESTRICT`; specialization tables `ON DELETE CASCADE` from `STAFF`
 
-**Indices**
+**Indexes**
 - `USER(username) UNIQUE`, `USER(email) UNIQUE`, `USER(status_id)`, `USER(last_login_at)`
 - `STAFF(user_id) UNIQUE`, `STAFF(gym_id, status_id)`, `STAFF(created_at)`
 - Each role table: `(<role>.staff_id) UNIQUE`
@@ -398,6 +420,9 @@ erDiagram
 ## 6. Classes & Trainer Availability (+ audits)
 _Sessions, trainer availability, staffing, and per-session equipment reservations._
 
+![ERD Diagram 4: 6. Classes & Trainer Availability](PNGs/ERDs-ERD-4.png)
+
+<!--
 ```mermaid
 ---
 config:
@@ -405,6 +430,8 @@ config:
   look: neo
   layout: elk
   elk:
+    algorithm: layered
+    direction: DOWN
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -467,6 +494,7 @@ erDiagram
         datetime updated_at "R"
     }
 ```
+-->
 
 **Attribute types**
 - **Key:** `CLASS_SESSION.id`, `TRAINER_AVAIL_DATE.id`
@@ -493,7 +521,7 @@ erDiagram
   - unique `(session_id, equip_kind_id)` in `SESSION_EQUIP_RESERVATION`
   - `SESSION_TRAINER.session_id -> CLASS_SESSION.id` `ON DELETE CASCADE` (remove staffing if session is deleted)
 
-**Indices**
+**Indexes**
 - `CLASS_SESSION(gym_id, starts_at)`, `CLASS_SESSION(status_id, open_for_booking)`, `CLASS_SESSION(starts_at)`
 - `TRAINER_AVAIL_DATE(trainer_id, for_date, period) UNIQUE`, `TRAINER_AVAIL_DATE(gym_id, for_date, period)`, `TRAINER_AVAIL_DATE(status_id)`
 - `SESSION_TRAINER(session_id, trainer_id) UNIQUE`, `SESSION_TRAINER(trainer_id, session_id)`
@@ -503,6 +531,9 @@ erDiagram
 ## 7. Members, Plans, Bookings & Check-ins (+ audits)
 _Memberships, bookings, access cards and check-ins (plus can check-in at any gym; trial/basic tied to home gym)._
 
+![ERD Diagram 5: 7. Members, Plans, Bookings & Check-ins](PNGs/ERDs-ERD-5.png)
+
+<!--
 ```mermaid
 ---
 config:
@@ -510,6 +541,8 @@ config:
   look: neo
   layout: elk
   elk:
+    algorithm: layered
+    direction: DOWN
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -631,6 +664,7 @@ erDiagram
         datetime updated_at "R"
     }
 ```
+-->
 
 **Attribute types**
 - **Key:** `USER.id`, `MEMBERSHIP_PLAN.id`, `MEMBER.id`, `BOOKING.id`, `CHECK_IN.id`, `ACCESS_CARD.id`, `GYM.id`
@@ -659,7 +693,7 @@ erDiagram
   - unique `(member_id, session_id)` in `BOOKING` (active rows)
   - unique `(card_uid)` in `ACCESS_CARD`
 
-**Indices**
+**Indexes**
 - `USER(username) UNIQUE`, `USER(email) UNIQUE`, `USER(status_id)`, `USER(last_login_at)`
 - `MEMBERSHIP_PLAN(name) UNIQUE`, `MEMBERSHIP_PLAN(tier, status_id)`, `MEMBERSHIP_PLAN(price)`
 - `MEMBER(user_id) UNIQUE`, `MEMBER(status_id)`, `MEMBER(membership_plan_id)`, `MEMBER(home_gym_id)`
@@ -672,6 +706,9 @@ erDiagram
 ## 8. Admins (+ audits)
 _Gym-scoped admins and global super-admins._
 
+![ERD Diagram 6: 8. Admins](PNGs/ERDs-ERD-6.png)
+
+<!--
 ```mermaid
 ---
 config:
@@ -679,6 +716,8 @@ config:
   look: neo
   layout: elk
   elk:
+    algorithm: layered
+    direction: DOWN
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -707,6 +746,7 @@ erDiagram
     SUPER_ADMIN { bigint id "PK, R"  bigint user_id "U, R, FK -> USER.id"  string scope "R, global"  datetime created_at "R"  datetime updated_at "R" }
     GYM { bigint id "PK, R"  string name "R"  string address "R"  bigint status_id "R, FK -> GYM_STATUS_IND.id"  datetime created_at "R"  datetime updated_at "R" }
 ```
+-->
 
 **Attribute types**
 - **Key:** `USER.id`, `STAFF.id`, `ADMIN.id`, `SUPER_ADMIN.id`, `GYM.id`
@@ -726,7 +766,7 @@ erDiagram
 - **Table-level**:
   - Unique `(user_id)` in `STAFF`; unique `(staff_id)` in `ADMIN`
 
-**Indices**
+**Indexes**
 - `USER(username) UNIQUE`, `USER(email) UNIQUE`, `USER(status_id)`
 - `STAFF(user_id) UNIQUE`, `STAFF(gym_id, status_id)`
 - `ADMIN(staff_id) UNIQUE`
@@ -736,6 +776,9 @@ erDiagram
 ## 9. Status Indicator Table Structure
 _Generic structure for all `*_STATUS_IND` tables (serves as lookup tables)._
 
+![ERD Diagram 7: 9. Status Indicator Table Structure](PNGs/ERDs-ERD-7.png)
+
+<!--
 ```mermaid
 ---
 config:
@@ -743,6 +786,8 @@ config:
   look: neo
   layout: elk
   elk:
+    algorithm: layered
+    direction: DOWN
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -763,6 +808,7 @@ erDiagram
 
     BASE_ENTITY_STATUS_IND ||--o{ BASE_ENTITY : classifies
 ```
+-->
 
 **Indicator families (examples)**
 - `ACCOUNT_STATUS_IND` → `USER.status_id`, `STAFF.status_id`, `MEMBER.status_id`
@@ -788,6 +834,9 @@ erDiagram
 ## 10. Audit Table Structure
 _Generic structure for all `*_AUD` tables._
 
+![ERD Diagram 8: 10. Audit Table Structure](PNGs/ERDs-ERD-8.png)
+
+<!--
 ```mermaid
 ---
 config:
@@ -795,6 +844,8 @@ config:
   look: neo
   layout: elk
   elk:
+    algorithm: layered
+    direction: DOWN
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -819,8 +870,9 @@ erDiagram
         datetime updated_at "R"
     }
 ```
+-->
 
-**How states are captured (updated)**
+**How states are captured**
 - Triggers write `after_json` for each event. Prior state can be reconstructed from the **previous audit row’s `after_json`** (append-only history)
 - `seq_no` provides a reliable ordering of the audits
 
@@ -828,7 +880,7 @@ erDiagram
 - `BASE_ENTITY_AUD(base_entity_id) → BASE_ENTITY(id)`
 - `UNIQUE(seq_no)` (per-table sequence), plus index `(base_entity_id, seq_no)` for efficient timelines.
 
-**Recommended indices (updated)**
+**Indexes**
 - `(base_entity_id, seq_no)` **covering index** (primary read path)
 - `(actor_user_id, seq_no)` for actor timelines
 - `(occurred_at)` for time-range queries

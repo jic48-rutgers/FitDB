@@ -1,9 +1,9 @@
 # Functional Requirements Document (FRD)
 
 ## 1. Document Control
-- **Version:**  2.0
+- **Version:**  2.1
 - **Author:**  Henry Huerta
-- **Date:**  2025-10-29
+- **Date:**  2025-11-3
 - **Reviewers:**  Prof. Arnold Lau, T.A. Sneh Bhandari
 
 ## 2. Purpose

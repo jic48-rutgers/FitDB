@@ -1,9 +1,9 @@
 # Technical Design Document
 
 ## 1. Document Control
-- **Version:**  2.0
+- **Version:**  2.1
 - **Author:**  Henry Huerta
-- **Date:**  2025-10-29
+- **Date:**  2025-11-3
 - **Reviewers:**  Prof. Arnold Lau, T.A. Sneh Bhandari
 
 ## 2. Introduction
@@ -94,6 +94,10 @@ _Overview with audit tables. For separated diagrams (overview **without** audits
 - **Triggers:** Business rule enforcement that cannot be expressed via simple constraints
 - **Application Layer:** Additional validation for complex business logic
 
+
+![TDD ERD Diagram 1: Data Model](PNGs/TDD-ERD-1.png)
+
+<!--
 ```mermaid
 ---
 config:
@@ -101,6 +105,8 @@ config:
   look: neo
   layout: elk
   elk:
+    algorithm: layered
+    direction: DOWN
     nodePlacementStrategy: LINEAR_SEGMENTS
 ---
 erDiagram
@@ -179,6 +185,7 @@ erDiagram
     CHECK_IN            ||--o{ CHECK_IN_AUD                : audited_by
     ACCESS_CARD         ||--o{ ACCESS_CARD_AUD             : audited_by
 ```
+-->
 
 #### 4.1.1 Cardinality
 - **1:1**
@@ -221,43 +228,20 @@ erDiagram
 - **Equipment:** `GET /api/equipment/items`, `POST /api/equipment/service-logs`
 - **Reports:** `GET /api/reports/class-utilization`, `GET /api/reports/equipment-demand`
 
-### 4.3 Entitlements Matrix
+### 4.3 Entitlements Summary
 
-The following table maps system functions to roles and their access levels:
+- r_member: Can view personal profile/bookings/check-ins/available sessions; check in.
+- r_plus_member: All r_member rights plus booking sessions, cancel own bookings, view bookable sessions.
+- r_trainer: Can view personal profile (trainer version), trainer schedule, class rosters; set availability.
+- r_front_desk: Can view member lookup; issue/revoke access cards; check in.
+- r_floor_manager: Can view equipment status; log equipment service; snapshot inventory.
+- r_manager: Can view everything above plus utilization/equipment demand reports; manage sessions, trainers, access cards, register/ban members, cancel bookings.
+- r_admin_gym: All r_manager functions plus view audit logs; create user accounts.
+- r_super_admin: All functions, including gym/role management.
 
-| Function | r_member | r_plus_member | r_trainer | r_front_desk | r_floor_manager | r_manager | r_admin_gym | r_super_admin |
-|----------|----------|---------------|-----------|--------------|-----------------|----------|-------------|---------------|
-| **View Functions** |
-| View personal profile | ✓ | ✓ | ✓* | ✗ | ✗ | ✓ | ✓ | ✓ |
-| View own bookings | ✓ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| View own check-ins | ✓ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| View available sessions | ✓ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| View bookable sessions | ✗ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| View trainer schedule | ✗ | ✗ | ✓ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| View class rosters | ✗ | ✗ | ✓* | ✗ | ✗ | ✓ | ✓ | ✓ |
-| View member lookup | ✗ | ✗ | ✗ | ✓ | ✗ | ✓ | ✓ | ✓ |
-| View equipment status | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ |
-| View utilization reports | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| View equipment demand | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| View audit logs | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
-| **Action Functions** |
-| Book session | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
-| Cancel own booking | ✗ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| Check in | ✓* | ✓* | ✗ | ✓ | ✗ | ✓ | ✓ | ✓ |
-| Set availability | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✓ | ✓ |
-| Publish sessions | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| Assign trainers | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| Issue access card | ✗ | ✗ | ✗ | ✓ | ✗ | ✓ | ✓ | ✓ |
-| Revoke access card | ✗ | ✗ | ✗ | ✓ | ✗ | ✓ | ✓ | ✓ |
-| Log equipment service | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ |
-| Snapshot inventory | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ | ✓ |
-| Register member | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| Ban member | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
-| Create user accounts | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
-| Manage gyms | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
-| Manage roles | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
-
-*Note:* Trainers viewing personal profiles see trainer-specific views; members checking in require appropriate membership status.
+*Special notes:* 
+- Trainers see their own info in a trainer-specific format.
+- Members can check in only when membership is valid.
 
 ### 4.4 Application Logic
 **Booking Workflow (transactional)**
@@ -285,7 +269,7 @@ The following table maps system functions to roles and their access levels:
 - **`sp_member_register(p_user_id, p_plan_id, p_home_gym_id)`**: creates `MEMBER`; assigns role; writes `MEMBER_AUD`.
 - **`sp_access_card_issue(p_member_id, p_gym_id, p_card_uid)`** / **`sp_access_card_revoke(...)`**: maintains `ACCESS_CARD`; writes `ACCESS_CARD_AUD`.
 
-> **Audit note:** procedures call a shared helper to append a `*_AUD` row with `(seq_no, occurred_at, action, after_json, actor_user_id)` (WIP)
+> **Audit note:** procedures call a shared helper to append a `*_AUD` row with `(seq_no, occurred_at, action, after_json, actor_user_id)`
 
 #### RBAC Mapping
 
@@ -638,3 +622,19 @@ r_member (basic access, profile viewing)
 - **Runtime logging:** audit stored in DB as JSON snapshots
 - **Metrics:** latency, error rates, booking success/failure counts
 - **Backups:** DB snapshots/backups
+
+## 12. GitHub Repository
+
+**Repository:** [https://github.com/hah97/FitDB](https://github.com/hah97/FitDB)
+
+### Repository Structure
+- **`/sql/`** - Database schema files
+- **`/data/`** - Seed data generation
+- **`/scripts/`** - Automation and utilities
+- **`/docs/`** - Comprehensive documentation
+- **`Makefile`** - Build automation with targets
+- **`README.md`** - Project overview, setup instructions, and current status
+- **`requirements.txt`** - Python dependencies
+
+### Setup Instructions
+See [README.md](https://github.com/hah97/FitDB/blob/main/README.md) for detailed setup instructions 
