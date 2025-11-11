@@ -14,7 +14,7 @@ CREATE TABLE USER_AUD (
   updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   KEY k_useraud_entity_seq (base_entity_id, seq_no),
   KEY k_useraud_actor_seq (actor_user_id, seq_no),
-  CONSTRAINT fk_useraud_user FOREIGN KEY (base_entity_id) REFERENCES USER(id),
+  -- note: we intentionally omit FK to USER to allow historical audit records after deletion
   CONSTRAINT fk_useraud_actor FOREIGN KEY (actor_user_id) REFERENCES USER(id)
 ) ENGINE=InnoDB;
 
@@ -286,10 +286,10 @@ CREATE TABLE MEMBER_AUD (
   actor_user_id BIGINT NULL,
   created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  KEY k_memaud_entity_seq (base_entity_id, seq_no),
-  KEY k_memaud_actor_seq (actor_user_id, seq_no),
-  CONSTRAINT fk_memaud_member FOREIGN KEY (base_entity_id) REFERENCES MEMBER(id),
-  CONSTRAINT fk_memaud_actor FOREIGN KEY (actor_user_id) REFERENCES USER(id)
+  KEY k_memberaud_entity_seq (base_entity_id, seq_no),
+  KEY k_memberaud_actor_seq (actor_user_id, seq_no),
+  -- no FK to MEMBER to preserve history after delete
+  CONSTRAINT fk_memberaud_actor FOREIGN KEY (actor_user_id) REFERENCES USER(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE BOOKING_AUD (
@@ -333,6 +333,6 @@ CREATE TABLE ACCESS_CARD_AUD (
   updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   KEY k_acardaud_entity_seq (base_entity_id, seq_no),
   KEY k_acardaud_actor_seq (actor_user_id, seq_no),
-  CONSTRAINT fk_acardaud_card FOREIGN KEY (base_entity_id) REFERENCES ACCESS_CARD(id),
+  -- no FK to ACCESS_CARD so we can retain audit rows after card deletion
   CONSTRAINT fk_acardaud_actor FOREIGN KEY (actor_user_id) REFERENCES USER(id)
 ) ENGINE=InnoDB;

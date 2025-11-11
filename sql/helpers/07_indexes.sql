@@ -1,10 +1,15 @@
 -- 7) Indexes
 
--- 7.1 users & staff
-CREATE INDEX idx_user_status      ON USER(status_id);
-CREATE INDEX idx_user_last_login  ON USER(last_login_at);
-CREATE INDEX idx_staff_gym_status ON STAFF(gym_id, status_id);
+-- 7.1 users & staff 
+CREATE INDEX idx_user_status        ON USER(status_id);
+CREATE INDEX idx_user_last_login    ON USER(last_login_at);
+CREATE INDEX idx_user_login_status  ON USER(last_login_at, status_id);
+CREATE INDEX idx_staff_gym_status   ON STAFF(gym_id, status_id);
 
+-- The following indexes (equipment, sessions, bookings, etc) are planned for post-MVP implementation.
+-- They are commented out for now.
+
+ /*
 -- 7.2 equipment
 CREATE INDEX idx_eitem_gym_kind   ON EQUIPMENT_ITEM(gym_id, equip_kind_id);
 CREATE INDEX idx_eitem_status     ON EQUIPMENT_ITEM(status_id);
@@ -19,3 +24,4 @@ CREATE INDEX idx_booking_member_time ON BOOKING(member_id, booked_at);
 CREATE INDEX idx_booking_status      ON BOOKING(status_id);
 CREATE INDEX idx_checkin_member_time ON CHECK_IN(member_id, checked_in_at);
 CREATE INDEX idx_checkin_gym_time    ON CHECK_IN(gym_id, checked_in_at);
+*/

@@ -65,6 +65,7 @@ FOR EACH ROW
 BEGIN
     DECLARE v_active_member_count INT DEFAULT 0;
     DECLARE v_active_staff_count INT DEFAULT 0;
+    DECLARE v_active_card_count INT DEFAULT 0;
     
     -- check for active memberships
     SELECT COUNT(*) INTO v_active_member_count
@@ -77,10 +78,21 @@ BEGIN
     FROM STAFF s
     JOIN ACCOUNT_STATUS_IND asi ON s.status_id = asi.id
     WHERE s.user_id = OLD.id AND asi.code = 'ACTIVE';
+
+    -- check for active access cards
+    SELECT COUNT(*) INTO v_active_card_count
+    FROM ACCESS_CARD ac
+    JOIN MEMBER m ON ac.member_id = m.id
+    JOIN ACCESS_CARD_STATUS_IND acsi ON ac.status_id = acsi.id
+    WHERE m.user_id = OLD.id AND acsi.code = 'ACTIVE';
     
     -- if user has active memberships or staff roles, signal an error
     IF v_active_member_count > 0 OR v_active_staff_count > 0 THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cannot delete user with active memberships or staff roles';
+    END IF;
+
+    IF v_active_card_count > 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cannot delete user with active access cards';
     END IF;
 END$$
 

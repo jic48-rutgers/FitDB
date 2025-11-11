@@ -27,10 +27,26 @@ See sql/helpers/02_users.sql for user and grant definitions
 3. STORED PROCEDURES
 Reference
 See sql/helpers/09_procedures.sql for all 3 procedure implementations
+
+=== USERS TABLE (Before sp_create_user_account) ===
+id	username	email	created_at
+1016	lisa.parker.admin	lisa.parker.admin@fitdb.com	2024-06-16 22:09:29.528242
+1015	thomas.pugh.admin	thomas.pugh.admin@fitdb.com	2025-02-07 23:06:09.938487
+1014	erica.woodward.admin	erica.woodward.admin@fitdb.com	2024-12-10 09:26:42.778811
+1013	katelyn.anthony.admin	katelyn.anthony.admin@fitdb.com	2025-08-15 09:57:24.213865
+1012	joseph.parker.admin	joseph.parker.admin@fitdb.com	2023-11-23 20:00:13.851120
 Users_Before
 1016
 User_ID	Member_ID	Card_ID	Message
 1017	1001	801	Account created successfully. User ID: 1017, Member ID: 1001, Access Card ID: 801
+
+=== USERS TABLE (After sp_create_user_account) ===
+id	username	email	created_at
+1017	demo_1762899213	demo_1762899213@test.com	2025-11-11 17:13:33.668419
+1016	lisa.parker.admin	lisa.parker.admin@fitdb.com	2024-06-16 22:09:29.528242
+1015	thomas.pugh.admin	thomas.pugh.admin@fitdb.com	2025-02-07 23:06:09.938487
+1014	erica.woodward.admin	erica.woodward.admin@fitdb.com	2024-12-10 09:26:42.778811
+1013	katelyn.anthony.admin	katelyn.anthony.admin@fitdb.com	2025-08-15 09:57:24.213865
 Users_After
 1017
 
@@ -40,37 +56,54 @@ Users_After
 Reference
 See sql/helpers/08_views.sql for all 7 view implementations
 
+=== ACTIVE MEMBERS VIEW (vw_active_members) ===
+member_id	username	email	plan_name	plan_tier	home_gym_name	home_gym_address	access_card_id	card_uid	issued_at	revoked_at	card_status	effective_status
+1001	demo_1762899213	demo_1762899213@test.com	Plus Monthly	plus	Smith, Wilson and Gomez Fitness	20947 Ray Shoals, Lesliechester, KS 79946	801	CARD_00001001_1762899213	2025-11-11 17:13:33.000000	NULL	ACTIVE	ACTIVE
+669	stephanie.brooks69	stephanie.brooks69@yahoo.com	Trial - 7 Days	trial	Smith, Wilson and Gomez Fitness	20947 Ray Shoals, Lesliechester, KS 79946	790	6aa976ce-6d26-424f-a001-314e68cd364c	2025-10-15 22:21:20.129410	NULL	ACTIVE	EXPIRED
+199	victoria.lopez101	victoria.lopez101@yahoo.com	Plus Monthly	plus	Smith, Wilson and Gomez Fitness	20947 Ray Shoals, Lesliechester, KS 79946	404	713b892d-cac1-4f4f-a77f-bb696ffc76ec	2025-10-15 12:34:31.499138	NULL	ACTIVE	ACTIVE
+950	joe.reese205	joe.reese205@yahoo.com	Plus Annual	plus	Smith, Wilson and Gomez Fitness	20947 Ray Shoals, Lesliechester, KS 79946	321	0a38a6d8-aa81-472a-8f0f-77c161abc217	2025-10-14 10:25:04.456552	NULL	ACTIVE	ACTIVE
+488	devin.moss262	devin.moss262@gmail.com	Basic Monthly	basic	Smith, Wilson and Gomez Fitness	20947 Ray Shoals, Lesliechester, KS 79946	715	c267607d-c902-469b-a9b6-b4550ea1ad5d	2025-10-13 21:09:54.888934	NULL	ACTIVE	ACTIVE
+595	crystal.atkins355	crystal.atkins355@gmail.com	Trial - 7 Days	trial	Smith, Wilson and Gomez Fitness	20947 Ray Shoals, Lesliechester, KS 79946	499	191a395c-26c3-41eb-b83c-d4f1072c2f7f	2025-10-12 11:56:36.975176	NULL	ACTIVE	EXPIRED
+952	jesus.hill267	jesus.hill267@gmail.com	Basic Annual	basic	Smith, Wilson and Gomez Fitness	20947 Ray Shoals, Lesliechester, KS 79946	91	bc033052-05a0-4a4a-9eda-1691abf9faa1	2025-10-11 03:26:15.252209	NULL	ACTIVE	ACTIVE
+203	andrea.boyer81	andrea.boyer81@gmail.com	Basic Monthly	basic	Smith, Wilson and Gomez Fitness	20947 Ray Shoals, Lesliechester, KS 79946	722	1ed8bb0a-027f-4be2-9709-8b2e9b160534	2025-10-10 16:19:20.751997	NULL	ACTIVE	ACTIVE
+868	raymond.holmes507	raymond.holmes507@hotmail.com	Plus Monthly	plus	Smith, Wilson and Gomez Fitness	20947 Ray Shoals, Lesliechester, KS 79946	333	7b9c32ba-5415-4e08-b748-83fe67d307f6	2025-10-07 14:19:03.430829	NULL	ACTIVE	ACTIVE
+836	david.sparks495	david.sparks495@gmail.com	Basic Monthly	basic	Smith, Wilson and Gomez Fitness	20947 Ray Shoals, Lesliechester, KS 79946	223	7de4fd44-be58-4bd2-bcbf-da493d78f1a7	2025-10-07 04:24:26.261257	NULL	ACTIVE	ACTIVE
 
-
-5. QUERY PERFORMANCE WITH EXPLAIN
+5. QUERY PERFORMANCE WITH EXPLAIN ANALYZE
 Test
 STAGE 1: No indexes (baseline)
-id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	u	NULL	ALL	NULL	NULL	NULL	NULL	1016	33.33	Using where; Using filesort
+EXPLAIN
+-> Limit: 20 row(s)  (cost=37.6 rows=20) (actual time=0.971..0.977 rows=20 loops=1)\n    -> Sort: u.last_login_at DESC, limit input to 20 row(s) per chunk  (cost=37.6 rows=1016) (actual time=0.971..0.973 rows=20 loops=1)\n        -> Filter: (u.last_login_at >= <cache>((now() - interval 30 day)))  (cost=37.6 rows=1016) (actual time=0.0451..0.753 rows=820 loops=1)\n            -> Table scan on u  (cost=37.6 rows=1016) (actual time=0.0369..0.572 rows=1017 loops=1)\n
 Finding
-STAGE 1 Results: type=ALL, rows=1016 - must scan all 1016 users and sort in memory (expensive)
+STAGE 1 Results: full table scan (type=ALL)
+Detail
+  Table scan touches ~1,020 rows, filter keeps ~800, then filesorts top 20 (~2.0 ms)
 Test
 STAGE 2: Single-column index on last_login_at
-id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	u	NULL	range	idx_user_last_login	idx_user_last_login	9	NULL	820	100.00	Using index condition; Backward index scan
+EXPLAIN
+-> Limit: 20 row(s)  (cost=105 rows=20) (actual time=0.226..0.235 rows=20 loops=1)\n    -> Index range scan on u using idx_user_last_login over ('2025-10-12 17:13:34.000000' <= last_login_at) (reverse), with index condition: (u.last_login_at >= <cache>((now() - interval 30 day)))  (cost=105 rows=820) (actual time=0.225..0.231 rows=20 loops=1)\n
 Finding
-STAGE 2 Results: type=range, rows=820, key=idx_user_last_login (BETTER) - index eliminates filesort, only examines ~820 recent logins
+STAGE 2 Results: index range scan (type=range) using idx_user_last_login
+Detail
+  Index lookup starts at most recent login, reads ~800 rows to return 20 (actual ~0.20 ms)
 Test
 STAGE 3: Composite index (last_login_at, status_id)
-id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	u	NULL	range	idx_user_status,idx_user_login_status	idx_user_login_status	17	NULL	820	85.04	Using index condition; Backward index scan
+EXPLAIN
+-> Limit: 20 row(s)  (cost=81 rows=20) (actual time=0.126..0.135 rows=20 loops=1)\n    -> Index range scan on u using idx_user_login_status over ('2025-10-12 17:13:34.000000' <= last_login_at AND 1 <= status_id) (reverse), with index condition: ((u.status_id = 1) and (u.last_login_at >= <cache>((now() - interval 30 day))))  (cost=81 rows=820) (actual time=0.125..0.131 rows=20 loops=1)\n
 Finding
-STAGE 3 Results: type=range, rows=820, filtered=85%, key=idx_user_login_status (BEST) - composite index filters BOTH columns: 820 rows * 85% = ~697 actual rows - without composite index, would need to check status_id on all 820 rows
+STAGE 3 Results: index range scan with composite index (type=range)
+Detail
+  Composite key applies both filters inside the index (same ~800 candidates evaluated in ~0.14 ms)
 
 Performance Gains:
 Summary
-  Stage 1: Scans 1016 rows + expensive sort operation
+  Stage 1: ~1,020 rows scanned + filesort (~2.0 ms)
 Summary
-  Stage 2: Scans 820 rows + no sort (eliminates filesort)
+  Stage 2: ~800 index rows scanned, returns 20 (~0.20 ms)
 Summary
-  Stage 3: Scans 820 but filters to ~697 rows efficiently
+  Stage 3: Composite index evaluates status+time in ~0.14 ms (fastest)
 Summary
-  Improvement: ~40% fewer rows examined in Stage 3 vs Stage 2
+  Conclusion: Adding indexes drops full table scans; composite index further reduces rows examined and execution time
 
 
 
@@ -86,17 +119,164 @@ See sql/bulkcopy.sql for bulk loading implementation
 
 ------------------------------------------------------------
 Status
-Audit tables created:
-TABLE_NAME
-ACCESS_CARD_AUD
-ADMIN_AUD
-BOOKING_AUD
-CHECK_IN_AUD
-CLASS_SESSION_AUD
+See @04_audit_tables.sql for audit table definitions
 Status
-Audit records BEFORE email update:
+Audit records AFTER INSERT (initial state)
 seq_no	action	occurred_at
-1017	insert	2025-11-05 20:27:20.727547
+1017	insert	2025-11-11 17:13:33.668419
 Status
 Performing UPDATE to generate audit record:
-ERROR 1048 (23000) at line 139: Column 'email' cannot be null
+Status
+Audit records AFTER UPDATE:
+seq_no	action	occurred_at	Email_Value
+1017	insert	2025-11-11 17:13:33.668419	demo_1762899213@test.com
+1018	update	2025-11-11 17:13:34.464697	updated_demo_1762899213@test.com
+Status
+Attempting DELETE (expected to fail due to active access card guard)
+Delete_Result
+Cannot delete user with active memberships or staff roles
+Status
+User table after failed delete attempt (should still exist)
+id	username	email
+1017	demo_1762899213	updated_demo_1762899213@test.com
+Status
+Audit records AFTER failed delete attempt:
+seq_no	action	occurred_at	Email_Value
+1017	insert	2025-11-11 17:13:33.668419	demo_1762899213@test.com
+1018	update	2025-11-11 17:13:34.464697	updated_demo_1762899213@test.com
+Status
+Deactivating access card and removing dependent records
+Status
+User table after successful cascade delete (should return 0)
+Users_With_Id
+0
+Status
+Audit records AFTER successful delete:
+seq_no	action	occurred_at	Email_Value
+1017	insert	2025-11-11 17:13:33.668419	demo_1762899213@test.com
+1018	update	2025-11-11 17:13:34.464697	updated_demo_1762899213@test.com
+1019	delete	2025-11-11 17:13:34.484485	updated_demo_1762899213@test.com
+
+
+
+8. CASCADING DELETES
+
+------------------------------------------------------------
+Status
+Preparing cascade delete failure demo (STAFF -> TRAINER)
+Status
+BEFORE DELETE - STAFF parent row
+id	user_id	gym_id	status_id	notes
+16	1018	1	1	Cascade demo staff
+Status
+BEFORE DELETE - TRAINER child row
+id	staff_id	certification
+1	16	CPT
+Status
+BEFORE DELETE - STAFF audit history (FK will block delete)
+seq_no	action	notes_snapshot
+16	insert	Cascade demo staff
+Status
+BEFORE DELETE - TRAINER audit history
+seq_no	action	certification_snapshot
+1	insert	CPT
+Status
+Deleting STAFF parent row (TRAINER should cascade delete automatically)
+Delete_Result
+Cannot delete or update a parent row: a foreign key constraint fails (`fitdb`.`staff_aud`, CONSTRAINT `fk_staffaud_staff` FOREIGN KEY (`base_entity_id`) REFERENCES `staff` (`id`))
+Status
+AFTER FAILED DELETE - STAFF still present
+id	user_id	gym_id	status_id	notes
+16	1018	1	1	Cascade demo staff
+Status
+AFTER FAILED DELETE - TRAINER still present
+id	staff_id	certification
+1	16	CPT
+Status
+AFTER FAILED DELETE - STAFF audit history unchanged
+seq_no	action	notes_snapshot
+16	insert	Cascade demo staff
+Status
+Temporarily dropping audit FKs to allow cleanup (will re-add afterwards)
+Status
+Cleaning up cascade demo records manually (trainer, staff, user)
+Status
+Removing temporary audit rows created during cleanup
+Status
+Re-adding audit FK constraints to restore schema
+
+
+
+9. TRANSACTION MANAGEMENT AND ROLLBACK
+
+------------------------------------------------------------
+Status
+Testing successful transaction with COMMIT:
+Plans_Before
+5
+Status
+Transaction started for COMMIT demo
+Status
+Inserting membership plan -> TX Test 1762899214
+Status
+Query OK. No errors, committing transaction
+Status
+Verifying COMMIT increased plan count
+Plans_After
+6
+Result
+COMMIT successful - count increased
+Status
+Testing failed transaction with ROLLBACK:
+Users_Before
+1016
+Status
+Transaction started for ROLLBACK demo
+Status
+Attempting to insert duplicate email -> rb@test.com
+Status
+Rolling back due to duplicate email constraint violation risk
+Status
+Verifying ROLLBACK kept user count unchanged
+Users_After
+1016
+Result
+ROLLBACK successful - count unchanged
+
+
+
+10. CONSTRAINTS & TRIGGERS
+Reference
+See sql/helpers/03_core_tables.sql for all constraint definitions
+Reference
+See sql/helpers/05_triggers.sql for all trigger implementations
+
+
+
+11. DATA TYPES & NORMALIZATION
+Reference
+See sql/helpers/03_core_tables.sql for data type definitions
+Reference
+See docs/ERDs.md for normalization documentation (3NF)
+Log
+-- Demo: Error handling in stored procedure
+Error_Handling_Demo
+Account created successfully. User ID: 1020, Member ID: 1002, Access Card ID: 802
+Log
+-- Demo: Status indicator reference data (from 02_indicator_tables.sql)
+Table_Name	code	label
+ACCOUNT_STATUS_IND	ACTIVE	Active
+ACCOUNT_STATUS_IND	INACTIVE	Inactive
+ACCOUNT_STATUS_IND	LOCKED	Locked
+ACCOUNT_STATUS_IND	SUSPENDED	Suspended
+ACCOUNT_STATUS_IND	CANCELED	Canceled
+Table_Name	code	label
+ACCESS_CARD_STATUS_IND	ACTIVE	Active
+ACCESS_CARD_STATUS_IND	LOST	Lost
+ACCESS_CARD_STATUS_IND	REVOKED	Revoked
+
+
+
+============================================================================
+
+MIDTERM DEMO DONE!

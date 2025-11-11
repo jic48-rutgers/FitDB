@@ -189,20 +189,27 @@ FitDB/
 1. Database Objects, 2. Access Control, 3. Stored Procedures, 4. Views, 5. Query Performance (EXPLAIN),
 6. Data Initialization, 7. Audit Strategy, 8. Cascading Deletes, 9. Transactions, 10. Constraints/Triggers, 11. Additional Elements
 
-**Setup and Run:**
-```bash
-# Full setup with medium seed (1,000 members)
-make full-setup SEED_SIZE=medium DB_USER=root DB_PASSWORD=yourpass
+**Setup and Run:**  
+To run the full midterm demo, just follow these two simple steps:
 
-# Run demonstration (generates log for Canvas submission)
-mysql -u root -p fitdb < sql/midterm_demo.sql > midterm_output.log 2>&1
+```bash
+# 1. Build everything with sample data (medium size)
+make full-setup SEED_SIZE=medium
+
+# `make full-setup SEED_SIZE=medium` initializes DB, builds schema, and seeds data
+# (Key constraints: temporarily OFF for data load, ON again after.)
+
+# 2. Run the demonstration and save all output to a log file
+mysql -u fitdb_admin -pchange-me-admin fitdb < sql/midterm_demo.sql > sql/midterm_output.log 2>&1
 ```
 
-**MySQL Workbench Alternative:**
-- Connection: fitdb_admin@127.0.0.1:3306 (setup instructions in `sql/midterm_demo.sql` header)
-- Export output: Query > Export Results > Export All Results to Single File
+- No need to change any usernames or passwords for demo purposes (the logins and defaults are already set for you).
+- After these steps, **check `sql/midterm_output.log`** — this file contains all the evidence/output you need for requirements and Canvas submission.
+- You do **not** need to use MySQL Workbench unless you want to view results or logs in a GUI.
 
-**Output:** `midterm_output.log` (or exported file from Workbench) contains all requirement demonstrations and evidence
+**Alternative (Workbench):**  
+- Connect as: `fitdb_admin@127.0.0.1:3306` (see sql/midterm_demo.sql header for details)
+
 
 ## Implementation Status
 
@@ -226,6 +233,14 @@ mysql -u root -p fitdb < sql/midterm_demo.sql > midterm_output.log 2>&1
 - Web application UI deployment
 - Performance benchmarking at scale
 - Multi-gym configuration UI
+
+## Professor Feedback Addressed
+- [x] **Verbose Demo:** Demo clearly shows every step with lots of `SELECT` output.
+- [x] **Audit Actions:** Shows insert, update, delete, and the audit logs for them.
+- [x] **Transactions:** Demo clearly shows both commit and rollback with error messages.
+- [x] **Makefile Explained:** README now tells you what `make full-setup` does.
+- [x] **Status Data Shown:** Demo shows status tables
+- [x] **User/Card Focus:** All examples use user and card actions.
 
 ## Docs
 - [`MVP_SCOPE.md`](./docs/MVP_SCOPE.md) – MVP scope clarification: what's included vs future features
