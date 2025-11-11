@@ -7,5 +7,4 @@ venv/
 # PDF generator script
 docs/generate_pdfs.py
 data/generate_seed_old.py
-sql/midterm_output.log
 data/csvs/*.csv
